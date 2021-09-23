@@ -5,7 +5,7 @@
 #ifndef __POLYGON_OBJECT_H__
 #define __POLYGON_OBJECT_H__
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include "optec/qpOASES.hpp"
 #include "float.h"
 #include <vector>
