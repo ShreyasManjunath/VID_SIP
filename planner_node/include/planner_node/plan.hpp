@@ -4,7 +4,7 @@
 #ifndef __PLAN_HPP__
 #define __PLAN_HPP__
 
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Dense>
 #include "planner_node/PolygonObject.h"
 
 #define USE_ROTORCRAFT_MODEL

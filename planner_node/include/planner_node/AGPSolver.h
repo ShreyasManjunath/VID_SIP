@@ -3,8 +3,8 @@
 
 
 #include "ros/ros.h"
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
+#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 #include <ros/package.h>
 #include <tuple>
 #include <memory>

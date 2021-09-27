@@ -122,6 +122,17 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
+
+add_library(
+  ${PROJECT_NAME}
+  src/AGPSolver.cpp
+  )
+
+target_link_libraries(${PROJECT_NAME}
+  ${catkin_LIBRARIES}
+  ${optec_LIBRARIES}
+  )
+
 add_executable(plan
  src/plan.cpp
 )
@@ -140,5 +151,6 @@ add_executable(plan
 target_link_libraries(plan
    ${catkin_LIBRARIES}
    ${optec_LIBRARIES}
+   ${PROJECT_NAME}
 )
 
