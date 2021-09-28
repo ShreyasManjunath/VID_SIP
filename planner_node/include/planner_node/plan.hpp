@@ -14,7 +14,7 @@
 #define ANGABS(x) (fabs(x)>M_PI?2*M_PI-fabs(x):fabs(x))
 
 #ifdef USE_ROTORCRAFT_MODEL
-    typedef Eigen::Vector3f StateVector;
+    typedef Eigen::Vector4f StateVector;
     #define DIMENSIONALITY 4
 #endif
 

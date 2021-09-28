@@ -23,6 +23,7 @@ namespace VID
             int numOfVertices;
             Vector3f a;
             Vector3f aabs;
+            Vector3f centroid;
             /**
             * \brief Normals of the separating hyperplanes defined by the incidence angle
             * For eg: n1, n2, n3 ...... n#
@@ -46,6 +47,7 @@ namespace VID
             static void setCamBoundNormals();
             int getnumOfVertices() const;
             void setnumOfVertices(int n);
+            std::vector<Vector3f> getVertices() const;
             
 
     };
