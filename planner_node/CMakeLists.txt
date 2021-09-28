@@ -126,6 +126,7 @@ include_directories(
 add_library(
   ${PROJECT_NAME}
   src/AGPSolver.cpp
+  src/Region.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}
