@@ -14,6 +14,8 @@
 #include <std_msgs/Int32.h>
 #include <stdlib.h>
 #include <fstream>
+#include "planner_node/System.h"
+#include "planner_node/State.h"
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 
@@ -33,6 +35,7 @@ double minDist = 3.0;
 double maxDist = 8.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
+double g_security_distance = 2.0;
 
 double g_cost;
 std::vector<double> spaceSize = {200.0, 200.0, 50.0};

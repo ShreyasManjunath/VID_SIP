@@ -127,6 +127,8 @@ add_library(
   ${PROJECT_NAME}
   src/AGPSolver.cpp
   src/Region.cpp
+  src/State.cpp
+  src/System.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}
