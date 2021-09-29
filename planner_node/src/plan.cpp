@@ -10,6 +10,7 @@
 #include "planner_node/PolygonObject.hpp"
 #include "planner_node/inspection.h"
 #include "ros/ros.h"
+#include <geometry_msgs/Polygon.h>
 #include <iostream>
 #include <std_msgs/Int32.h>
 #include <stdlib.h>
@@ -36,6 +37,8 @@ double maxDist = 8.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
 double g_security_distance = 2.0;
+double g_max_obs_dim = 0;
+double g_discretization_step;
 
 double g_cost;
 std::vector<double> spaceSize = {200.0, 200.0, 50.0};
@@ -55,6 +58,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
     polygons.push_back(tmp);
 
     maxID = polygons.size();
+    g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
     g_cost = DBL_MAX;
     ROS_INFO("Request received");
 
@@ -75,6 +79,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
     std::string pkgPath = ros::package::getPath("planner_node");
     std::fstream plannerLog;
     plannerLog.open((pkgPath+"/data/report.log").c_str(), std::ios::out);
+    plannerLog.close();
 
     for(int i = 0; i < maxID; i++)
     {

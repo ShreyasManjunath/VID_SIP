@@ -11,7 +11,6 @@
 #include "optec/qpOASES.hpp"
 #include "planner_node/plan.hpp"
 #include "planner_node/Region.h"
-// #include "planner_node/PolygonObject.h"
 
 typedef VID::region reg_t;
 extern reg_t problemBoundary;

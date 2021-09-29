@@ -1,6 +1,7 @@
 #include "planner_node/AGPSolver.h"
 #include <fstream>
 #include <iostream>
+#include "planner_node/System.h"
 
 extern double g_camAngleHorizontal;
 extern double g_camAngleVertical;
@@ -8,6 +9,7 @@ extern double g_camPitch;
 extern int g_convex_pieces;
 extern double g_angular_discretization_step;
 extern koptError_t koptError;
+extern double g_security_distance;
 
 AGPSolver::AGPSolver(poly_t* p, int variables, int constraints)
 :m_variables{variables}, m_constraints{constraints}, poly{*p}
@@ -353,8 +355,8 @@ bool AGPSolver::isVisible(StateVector s)
             return false;
     }
 
-    for(int it = 0; it<poly.camBoundNormal.size(); it++) {
-        Vector3f camN = camBoundRotated(poly.camBoundNormal[it], 0.0, s[3]);
+    for(int it = 0; it<  VID::Polygon::camBoundNormal.size(); it++) {
+        Vector3f camN = camBoundRotated( VID::Polygon::camBoundNormal[it], 0.0, s[3]);
         for(int i = 0; i < numOfVertices; i++)
         {
             if(camN.dot(vertices[i] - st)<0)
@@ -366,6 +368,17 @@ bool AGPSolver::isVisible(StateVector s)
 
 bool AGPSolver::IsInCollision(StateVector s)
 {
+    for(typename std::list<VID::region*>::iterator iter = System::obstacles.begin(); iter != System::obstacles.end(); iter++)
+    {
+        if(fabs((*iter)->center[0] - s[0]) < (*iter)->size[0]/2.0 + g_security_distance &&
+            fabs((*iter)->center[1] - s[1]) < (*iter)->size[1]/2.0 + g_security_distance &&
+            fabs((*iter)->center[2] - s[2]) < (*iter)->size[2]/2.0 + g_security_distance)
+        {
+            return true;
+        }
+
+
+    }
     return false;
 }
 

@@ -13,7 +13,7 @@ class System
 {
     protected:
         int numDimensions;
-        State* rootState;
+        State rootState;
     public:
         VID::region regionOperating;
         VID::region regionGoal;
@@ -23,14 +23,12 @@ class System
         ~System();
         int setNumDimensions(int numDimensionsIn);
         int getNumDimensions() { return numDimensions; }
-        State& getRootState() { return *rootState; }
+        State& getRootState() { return rootState; }
         int getStateKey (State &stateIn, double *stateKey);
         bool isReachingTarget (State &stateIn);
         int sampleState (State &randomStateOut);
         bool IsInCollision(double* stateIn);
 
 };
-
-std::list<VID::region*> System::obstacles(0, NULL);
 
 #endif

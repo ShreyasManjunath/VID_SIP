@@ -7,10 +7,7 @@
 #define __POLYGON_OBJECT_HPP__
 
 #include "planner_node/PolygonObject.h"
-
-extern double g_camAngleHorizontal;
-extern double g_camAngleVertical;
-extern double g_camPitch;
+#include "planner_node/System.h"
 
 VID::Polygon::Polygon()
 {
@@ -69,6 +66,55 @@ int VID::Polygon::getnumOfVertices() const
 std::vector<Vector3f> VID::Polygon::getVertices() const
 {
     return this->vertices;
+}
+
+VID::region* VID::Polygon::IsPolyInCollision(StateVector& stateIn)
+{
+    double rmin = 0;
+    // obstacle check
+    for(typename std::list<VID::region*>::iterator iter = System::obstacles.begin(); iter != System::obstacles.end(); iter++)
+    {
+        if(fabs((*iter)->center[0] - stateIn[0]) < (*iter)->size[0]/2.0 + g_security_distance + rmin &&
+            fabs((*iter)->center[1] - stateIn[1]) < (*iter)->size[1]/2.0 + g_security_distance + rmin &&
+            fabs((*iter)->center[2] - stateIn[2]) < (*iter)->size[2]/2.0 + g_security_distance)
+        {
+            return *iter;
+        }
+
+
+    }
+    // ray shooting
+    for(typename std::list<VID::region*>::iterator iter = System::obstacles.begin(); iter != System::obstacles.end(); iter++)
+    {
+        if (fabs((*iter)->center[0] - stateIn[0]) > OBSTACLE_DIST_THRESHOLD + g_max_obs_dim ||
+        fabs((*iter)->center[1] - stateIn[1]) > OBSTACLE_DIST_THRESHOLD + g_max_obs_dim ||
+        fabs((*iter)->center[2] - stateIn[2]) > OBSTACLE_DIST_THRESHOLD + g_max_obs_dim ||
+        (*iter)->occupied>0)
+        {
+            continue;
+        }
+
+        // For every vertex of the polygon
+        float f_disc = 0.0;
+        for(auto& x : vertices)
+        {
+            f_disc = g_discretization_step / sqrt(SQ(x[0] - stateIn[0]) + SQ(x[1] - stateIn[1]) + SQ(x[2] - stateIn[2]));
+
+            for(float f = 0.0; f < 1.0; f += f_disc)
+            {
+                if (fabs((*iter)->center[0] - (stateIn[0]*f+(1.0-f)*x[0])) < (*iter)->size[0]/2.0 &&
+                    fabs((*iter)->center[1] - (stateIn[1]*f+(1.0-f)*x[1])) < (*iter)->size[1]/2.0 &&
+                    fabs((*iter)->center[2] - (stateIn[2]*f+(1.0-f)*x[2])) < (*iter)->size[2]/2.0)
+                {
+                    return *iter;
+                }
+            }
+        }
+        
+        
+    }
+    
+    return NULL;
 }
 
 #endif

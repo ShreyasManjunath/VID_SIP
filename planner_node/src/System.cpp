@@ -11,12 +11,14 @@ System::~System()
 
 }
 
+std::list<VID::region*> System::obstacles(0, NULL);
+
 int System::setNumDimensions(int numDimensionsIn)
 {
     if(numDimensions < 0)
         return 0;
     numDimensions = numDimensionsIn;
-    (*rootState).setNumDimensions(numDimensions);
+    rootState.setNumDimensions(numDimensions);
     
     return 1;
 }
