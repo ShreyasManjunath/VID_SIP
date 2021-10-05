@@ -17,6 +17,9 @@
 #include <fstream>
 #include "planner_node/System.h"
 #include "planner_node/State.h"
+#include <visualization_msgs/Marker.h>
+#include <nav_msgs/Path.h>
+#include "tf/tf.h"
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 
@@ -39,24 +42,37 @@ double g_angular_discretization_step = 0.2;
 double g_security_distance = 2.0;
 double g_max_obs_dim = 0;
 double g_discretization_step;
-
+int polygon_seq_count = 0;
+int viewpoint_seq_count = 0;
+ 
 double g_cost;
 std::vector<double> spaceSize = {200.0, 200.0, 50.0};
 std::vector<double> spaceCenter = {0.0, 0.0, 0.0};
 
+std::vector<geometry_msgs::Polygon> inspectionArea;
+void visualize(StateVector st);
+void drawPolygon(poly_t* tmp);
+ros::Publisher mesh_pub;
+ros::Publisher viewpoint_pub;
 
 bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Response& res*/)
 {
     koptError = SUCCESSFUL;
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
-    poly_t *tmp = new poly_t;
-    for (auto &vert : inputPoly) {
-        tmp->vertices.push_back(vert);
+    VID::Polygon::setCamBoundNormals();
+    for(std::vector<geometry_msgs::Polygon>::iterator it = inspectionArea.begin(); it != inspectionArea.end(); it++)
+    {
+        poly_t *tmp = new poly_t;
+        for(auto& vert : (*it).points)
+        {
+            tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+        }
+        AGPSolver::initPolygon(tmp);
+        polygons.push_back(tmp);
+        drawPolygon(tmp);
+        ros::Duration(0.1).sleep();
     }
-    AGPSolver::initPolygon(tmp);
-    polygons.push_back(tmp);
-
     maxID = polygons.size();
     g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
     g_cost = DBL_MAX;
@@ -89,6 +105,8 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
         StateVector VPtmp;
         AGPSolver agp(polygons[i], 3, 8);
         VPtmp = agp.dualBarrierSamplerFresh(s1, s2, &VP[i]);
+        VP[i] = VPtmp;
+        visualize(VP[i]);
     }
 
 
@@ -106,12 +124,102 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
 int main(int argc, char **argv) {
     ros::init(argc, argv, "planner_node");
     ros::NodeHandle n;
-    inputPoly.push_back(Vector3f(24.5, 8, 3));
-    inputPoly.push_back(Vector3f(24.5, 5, 3));
-    inputPoly.push_back(Vector3f(24.5 ,5, 1.5));
+    mesh_pub = n.advertise<nav_msgs::Path>("stl_mesh", 1);
+    viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
+    ros::Duration(3).sleep();
+    geometry_msgs::Polygon P;
+    geometry_msgs::Point32 p32;
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+
     plan();
     // ros::ServiceServer service = n.advertiseService("inspectionPath", plan);
     ROS_INFO("Service started");
     ros::spin();
     return 0;
+}
+
+void visualize(StateVector st)
+{
+    // Draw Viewpoint
+    visualization_msgs::Marker point;
+    point.header.frame_id = "/kopt_frame";
+    point.header.stamp = ros::Time::now();
+    point.header.seq = viewpoint_seq_count++;
+    point.ns = "Viewpoints";
+    point.type = visualization_msgs::Marker::ARROW;
+    point.pose.position.x = st[0];
+    point.pose.position.y = st[1];
+    point.pose.position.z = st[2];
+
+    tf::Quaternion q = tf::createQuaternionFromRPY(0.0, 0.0, st[3]);
+    point.pose.orientation.x = q.x();
+    point.pose.orientation.y = q.y();
+    point.pose.orientation.z = q.z();
+    point.pose.orientation.w = q.w();
+    point.scale.x = 0.4;
+    point.scale.y = 0.08;
+    point.scale.z = 0.08;
+    point.color.r = 1.0f;
+    point.color.g = 1.0f;
+    point.color.b = 0.0f;
+    point.color.a = 0.7;
+    point.lifetime = ros::Duration();
+    viewpoint_pub.publish(point);
+    ros::Duration(5).sleep();
+}
+
+void drawPolygon(poly_t* tmp)
+{
+    // Draw Triangle
+    poly_t& poly = *tmp;
+    nav_msgs::Path path;
+    path.header.frame_id = "/kopt_frame";
+    path.header.stamp = ros::Time::now();
+    path.header.seq = polygon_seq_count++;
+    for(auto& p : poly.vertices)
+    {
+        geometry_msgs::PoseStamped vert;
+        vert.pose.position.x = p[0];
+        vert.pose.position.y = p[1];
+        vert.pose.position.z = p[2];
+        vert.pose.orientation.x =  0.0;
+        vert.pose.orientation.y =  0.0;
+        vert.pose.orientation.z =  0.0;
+        vert.pose.orientation.w =  1.0;
+        path.poses.push_back(vert); 
+    }
+    geometry_msgs::PoseStamped vert;
+    vert.pose.position.x = poly.vertices[0][0];
+    vert.pose.position.y = poly.vertices[0][1];
+    vert.pose.position.z = poly.vertices[0][2];
+    vert.pose.orientation.x =  0.0;
+    vert.pose.orientation.y =  0.0;
+    vert.pose.orientation.z =  0.0;
+    vert.pose.orientation.w =  1.0;
+    path.poses.push_back(vert);
+    mesh_pub.publish(path);
+    ros::Duration(0.1).sleep();
 }

@@ -44,12 +44,14 @@ void AGPSolver::initPolygon(poly_t* p)
             {
                 Vector3f q = poly.vertices[i-(numOfVertices-1)] - poly.vertices[i]; q.normalize();
                 AngleAxisf m = AngleAxisf(poly.incidenceAngle, q);
-                poly.n.push_back(m * poly.a);
+                Vector3f n_tmp = m * poly.a; n_tmp.normalize();
+                poly.n.push_back(n_tmp);
             }
             else{
                 Vector3f q = poly.vertices[i+1] - poly.vertices[i]; q.normalize();
                 AngleAxisf m = AngleAxisf(poly.incidenceAngle, q);
-                poly.n.push_back(m * poly.a);
+                Vector3f n_tmp = m * poly.a; n_tmp.normalize();
+                poly.n.push_back(n_tmp);
             }
         }
     }
@@ -256,7 +258,7 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         g << poly.centroid[0] + DD * poly.aabs[0],
              poly.centroid[1] + DD * poly.aabs[1],
              poly.centroid[2] + DD * poly.aabs[2], 0.0;
-
+             
         static real_t lbx[3] = { X_MIN, Y_MIN, Z_MIN };
         static real_t ubx[3] = { X_MAX, Y_MAX, Z_MAX };
         int nWSR = 100;
@@ -347,7 +349,24 @@ bool AGPSolver::isVisible(StateVector s)
         return false;
     if(poly.aabs.dot(st-vertices[0]-poly.aabs*poly.maxDist)>0)
         return false;
+
+    // if((st - vertices[0]).dot(poly.n[0]) < 0)
+    //     return false;
+    // if((st - vertices[1]).dot(poly.n[1]) < 0)
+    //     return false;
+    // if((st - vertices[2]).dot(poly.n[2]) < 0)
+    //     return false;
     
+    // for(int it = 0; it<  VID::Polygon::camBoundNormal.size(); it++) {
+    //     Vector3f camN = camBoundRotated( VID::Polygon::camBoundNormal[it], 0.0, s[3]);
+    //     if(camN.dot(vertices[0] - st) < 0)
+    //         return false;
+    //     if(camN.dot(vertices[1] - st) < 0)
+    //         return false;   
+    //     if(camN.dot(vertices[2] - st) < 0)
+    //         return false; 
+    // }
+
     int numOfVertices = poly.getnumOfVertices();
     for(int i = 0; i < numOfVertices; i++)
     {
