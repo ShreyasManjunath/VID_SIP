@@ -20,6 +20,7 @@
 #include <visualization_msgs/Marker.h>
 #include <nav_msgs/Path.h>
 #include "tf/tf.h"
+#include "planner_node/TSP.h"
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 

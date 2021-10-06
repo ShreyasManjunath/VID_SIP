@@ -131,6 +131,7 @@ add_library(
   src/Region.cpp
   src/System.cpp
   src/State.cpp
+  src/TSP.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}
