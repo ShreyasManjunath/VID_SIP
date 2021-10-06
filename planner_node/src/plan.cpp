@@ -35,7 +35,7 @@ reg_t problemBoundary;
 koptError_t koptError;
 std::vector<Vector3f> inputPoly;
 double minIncidenceAngle = degreesToRadians(10);
-double minDist = 3.0;
+double minDist = 6.0;
 double maxDist = 8.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
@@ -106,7 +106,31 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
         AGPSolver agp(polygons[i], 3, 8);
         VPtmp = agp.dualBarrierSamplerFresh(s1, s2, &VP[i]);
         VP[i] = VPtmp;
-        visualize(VP[i]);
+        // visualize(VPtmp);
+        /* display sampled viewpoint in rviz */
+        visualization_msgs::Marker point;
+        point.header.frame_id = "/kopt_frame";
+        point.header.stamp = ros::Time::now();
+        point.id = i;
+        point.ns = "Viewpoints";
+        point.type = visualization_msgs::Marker::ARROW;
+        point.pose.position.x = VP[i][0];
+        point.pose.position.y = VP[i][1];
+        point.pose.position.z = VP[i][2];
+        tf::Quaternion q = tf::createQuaternionFromRPY(0,0,VP[i][3]);
+        point.pose.orientation.x = q.x();
+        point.pose.orientation.y = q.y();
+        point.pose.orientation.z = q.z();
+        point.pose.orientation.w = q.w();
+        point.scale.x = 0.4;
+        point.scale.y = 0.08;
+        point.scale.z = 0.08;
+        point.color.r = 1.0f;
+        point.color.g = 1.0f;
+        point.color.b = 0.2f;
+        point.color.a = 0.8;
+        point.lifetime = ros::Duration();
+        viewpoint_pub.publish(point);
     }
 
 
@@ -188,7 +212,7 @@ void visualize(StateVector st)
     point.color.a = 0.7;
     point.lifetime = ros::Duration();
     viewpoint_pub.publish(point);
-    ros::Duration(5).sleep();
+    ros::Duration(0.01).sleep();
 }
 
 void drawPolygon(poly_t* tmp)
@@ -221,5 +245,5 @@ void drawPolygon(poly_t* tmp)
     vert.pose.orientation.w =  1.0;
     path.poses.push_back(vert);
     mesh_pub.publish(path);
-    ros::Duration(0.1).sleep();
+    ros::Duration(0.01).sleep();
 }
