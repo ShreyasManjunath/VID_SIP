@@ -27,7 +27,7 @@ namespace VID
             // RoutingModel routing{manager};
             RoutingIndexManager* manager;
             RoutingModel* routing;
-            const Assignment* solution;
+            Assignment* solution;
             // std::unique_ptr<RoutingIndexManager> manager;
             // std::unique_ptr<RoutingModel> routing;
 

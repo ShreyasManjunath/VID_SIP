@@ -1,4 +1,5 @@
 #include "planner_node/TSP.h"
+#include "ros/ros.h"
 
 VID::TSP::TSP(std::vector<Eigen::Vector4f>& VP, int depotIn, int num_vehicles_in)
 {
@@ -16,9 +17,9 @@ VID::TSP::TSP(std::vector<Eigen::Vector4f>& VP, int depotIn, int num_vehicles_in
 
 VID::TSP::~TSP()
 {
-    delete manager;
-    delete routing;
-    delete solution;
+    delete manager; manager = nullptr;
+    delete routing; routing = nullptr;
+    delete solution; solution = nullptr;
 }
 
 void VID::TSP::setDepot(int depotIn)
@@ -71,7 +72,9 @@ void VID::TSP::solve()
     searchParams.set_first_solution_strategy(FirstSolutionStrategy::PATH_CHEAPEST_ARC);
 
     // Solve the TSP problem
-    solution = (*routing).SolveWithParameters(searchParams);
+    const Assignment* mSolution = (*routing).SolveWithParameters(searchParams);
+    solution = new Assignment{mSolution};
+    mSolution = nullptr;
     this->ArrangeFinalRoute();
 }
 
