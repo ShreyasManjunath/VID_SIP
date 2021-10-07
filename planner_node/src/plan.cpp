@@ -30,7 +30,7 @@ double g_camAngleVertical = degreesToRadians(47);
 double g_camPitch = degreesToRadians(30);
 
 int maxID;
-StateVector* VP;
+StateVector* VP; std::vector<StateVector> VPList;
 reg_t problemBoundary;
 
 koptError_t koptError;
@@ -53,6 +53,7 @@ std::vector<double> spaceCenter = {0.0, 0.0, 0.0};
 std::vector<geometry_msgs::Polygon> inspectionArea;
 void visualize(StateVector st);
 void drawPolygon(poly_t* tmp);
+void drawTrajectory(std::vector<StateVector>& tour);
 ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
 
@@ -106,7 +107,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
         StateVector VPtmp;
         AGPSolver agp(polygons[i], 3, 8);
         VPtmp = agp.dualBarrierSamplerFresh(s1, s2, &VP[i]);
-        VP[i] = VPtmp;
+        VP[i] = VPtmp; VPList.push_back(VPtmp);
         // visualize(VPtmp);
         /* display sampled viewpoint in rviz */
         visualization_msgs::Marker point;
@@ -134,6 +135,9 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
         viewpoint_pub.publish(point);
     }
 
+    VID::TSP* tsp_object = new VID::TSP{VPList, 0, 1};
+    tsp_object->solve();
+    auto final_route = tsp_object->getFinalRoute();
 
     if(koptError != SUCCESSFUL)
     {
@@ -142,6 +146,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
     }
     delete[] VP;
     VP = NULL;
+    delete tsp_object;
     ROS_INFO("SUCCESSFUL");
     return koptError == SUCCESSFUL;
 }
@@ -247,4 +252,9 @@ void drawPolygon(poly_t* tmp)
     path.poses.push_back(vert);
     mesh_pub.publish(path);
     ros::Duration(0.01).sleep();
+}
+
+void drawTrajectory(std::vector<StateVector>& tour)
+{
+    
 }
