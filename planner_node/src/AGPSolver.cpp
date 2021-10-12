@@ -412,10 +412,6 @@ Vector3f AGPSolver::camBoundRotated(Vector3f normal, double roll, double yaw)
 
 StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector* state2, StateVector* statePrev)
 {
-    // Calculate initial parameters for QProblem solver.
-    this->calculateQProblemParams();
-    
-
     if(poly.Fixpoint){
         StateVector ret;
         for(int i = 0; i<3; i++)
@@ -425,6 +421,9 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
         ret[3] = poly.vertices[1][0];
         return ret;
     }
+    
+    // Calculate initial parameters for QProblem solver.
+    this->calculateQProblemParams();
 
     // View point Solution method
     StateVector best; 

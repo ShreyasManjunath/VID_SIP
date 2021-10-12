@@ -64,6 +64,24 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
+
+    // Starting Point and other required poses
+    for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
+        itFixPose != req.requiredPoses.end() && (itFixPose != req.requiredPoses.end()-1 || req.requiredPoses.size() == 1);
+        itFixPose++)
+    {
+        poly_t *tmp = new poly_t;
+        tmp->vertices.push_back(Vector3f((*itFixPose).position.x, (*itFixPose).position.y, (*itFixPose).position.z));
+        tf::Pose pose;
+        tf::poseMsgToTF(*itFixPose, pose);
+        float yaw_angle = tf::getYaw(pose.getRotation());
+        tmp->vertices.push_back(Vector3f(yaw_angle, 0.0, 0.0));
+        tmp->vertices.push_back(Vector3f(0.0, 0.0, 0.0));
+        tmp->Fixpoint = true;
+        polygons.push_back(tmp);
+    }
+
+    // Read the inspection area (or Mesh data)
     for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
     {
         poly_t *tmp = new poly_t;
@@ -71,11 +89,13 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         {
             tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
         }
+        tmp->Fixpoint = false;
         AGPSolver::initPolygon(tmp);
         polygons.push_back(tmp);
         drawPolygon(tmp);
-        ros::Duration(0.1).sleep();
+        ros::Duration(0.01).sleep();
     }
+
     maxID = polygons.size();
     g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
     g_cost = DBL_MAX;
@@ -263,7 +283,7 @@ void drawPolygon(poly_t* tmp)
     vert.pose.orientation.w =  1.0;
     path.poses.push_back(vert);
     mesh_pub.publish(path);
-    ros::Duration(0.01).sleep();
+    ros::Duration(0.001).sleep();
 }
 
 void drawTrajectory(std::vector<StateVector>& tour)
