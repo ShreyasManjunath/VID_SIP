@@ -11,8 +11,6 @@
 #include <vector>
 #include <nav_msgs/Path.h>
 
-std::vector<nav_msgs::Path>* readSTLfile(std::string name);
-void setSpaceBoundary(planner_node::inspection& srv);
 
 int main(int argc, char **argv)
 {
@@ -24,8 +22,9 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    std::string node_name = "/Inspection_Planner";
-    std::string mesh_name = "robdekon.stl";
+    std::string node_name = "/VID_SIP_Planner_Node";
+    std::string mesh_file_name;
+    ros::param::get(node_name + "/mesh_file_name", mesh_file_name);
 
     VID::Request request;
 
@@ -36,8 +35,8 @@ int main(int argc, char **argv)
 
     request.setSpaceBoundary(node_name + "/space_boundary");
     request.setStartingPose(node_name + "/starting_pose");
-    request.setPlannerParameters(node_name);
-    request.readSTLfile(ros::package::getPath("request_client_node")+"/meshes/" + mesh_name);
+    request.setPlannerParameters(node_name + "/planner");
+    request.readSTLfile(ros::package::getPath("request_client_node")+"/meshes/" + mesh_file_name);
 
     if(!request.start())
     {

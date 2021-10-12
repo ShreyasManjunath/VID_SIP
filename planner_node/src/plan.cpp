@@ -58,13 +58,13 @@ ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
 ros::Publisher trajectory_pub;
 
-bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Response& res*/)
+bool plan(planner_node::inspection::Request& req, planner_node::inspection::Response& res)
 {
     koptError = SUCCESSFUL;
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
-    for(std::vector<geometry_msgs::Polygon>::iterator it = inspectionArea.begin(); it != inspectionArea.end(); it++)
+    for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
     {
         poly_t *tmp = new poly_t;
         for(auto& vert : (*it).points)
@@ -136,7 +136,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
         viewpoint_pub.publish(point);
     }
 
-    VID::TSP* tsp_object = new VID::TSP{VPList, 0, 1};
+    std::unique_ptr<VID::TSP> tsp_object = std::unique_ptr<VID::TSP>(new VID::TSP{VPList, 0, 1});
     tsp_object->solve();
     auto final_route = tsp_object->getFinalRoute();
     drawTrajectory(final_route);
@@ -148,7 +148,6 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
     }
     delete[] VP;
     VP = NULL;
-    delete tsp_object;
     ROS_INFO("SUCCESSFUL");
     return koptError == SUCCESSFUL;
 }
@@ -160,35 +159,45 @@ int main(int argc, char **argv) {
     viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
     trajectory_pub = n.advertise<nav_msgs::Path>("visualization_marker", 1);
     ros::Duration(3).sleep();
-    geometry_msgs::Polygon P;
-    geometry_msgs::Point32 p32;
-    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    inspectionArea.push_back(P);
-    P.points.clear();
-    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
-    inspectionArea.push_back(P);
-    P.points.clear();
-    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    inspectionArea.push_back(P);
-    P.points.clear();
-    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
-    inspectionArea.push_back(P);
-    P.points.clear();
-    p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
-    p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    inspectionArea.push_back(P);
+    // geometry_msgs::Polygon P;
+    // geometry_msgs::Point32 p32;
+    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
+    // p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    // p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 20.005768; p32.y = 14; p32.z = 4.5; P.points.push_back(p32);
+    // p32.x = 24.500000; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 20.005768; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    // P.points.clear();
+    // p32.x = 6.505767; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    // p32.x = 2; p32.y = 2; p32.z = 3; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
 
-    plan();
-    // ros::ServiceServer service = n.advertiseService("inspectionPath", plan);
+    // plan();
+    ros::ServiceServer service = n.advertiseService("inspectionPath", plan);
     ROS_INFO("Service started");
     ros::spin();
     return 0;

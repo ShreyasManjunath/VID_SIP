@@ -16,6 +16,7 @@ namespace VID
             planner_node::inspection srv;
             ros::ServiceClient requestClient;
             ros::NodeHandle nh;
+            std::vector<nav_msgs::Path>* mesh;
         public:
             Request();
             ~Request();
