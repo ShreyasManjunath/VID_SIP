@@ -56,6 +56,7 @@ void drawPolygon(poly_t* tmp);
 void drawTrajectory(std::vector<StateVector>& tour);
 ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
+ros::Publisher trajectory_pub;
 
 bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Response& res*/)
 {
@@ -138,6 +139,7 @@ bool plan(/*planner_node::inspection::Request& req, planner_node::inspection::Re
     VID::TSP* tsp_object = new VID::TSP{VPList, 0, 1};
     tsp_object->solve();
     auto final_route = tsp_object->getFinalRoute();
+    drawTrajectory(final_route);
 
     if(koptError != SUCCESSFUL)
     {
@@ -156,6 +158,7 @@ int main(int argc, char **argv) {
     ros::NodeHandle n;
     mesh_pub = n.advertise<nav_msgs::Path>("stl_mesh", 1);
     viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
+    trajectory_pub = n.advertise<nav_msgs::Path>("visualization_marker", 1);
     ros::Duration(3).sleep();
     geometry_msgs::Polygon P;
     geometry_msgs::Point32 p32;
@@ -256,5 +259,27 @@ void drawPolygon(poly_t* tmp)
 
 void drawTrajectory(std::vector<StateVector>& tour)
 {
-    
+    nav_msgs::Path trajectory;
+    trajectory.header.stamp = ros::Time::now();
+    trajectory.header.seq = 1;
+    trajectory.header.frame_id = "/kopt_frame";
+    int k = 0;
+    for(auto& ele : tour)
+    {
+        geometry_msgs::PoseStamped vp;
+        vp.header.frame_id = "/kopt_frame";
+        vp.header.seq = k++;
+        vp.header.stamp = ros::Time::now();
+        vp.pose.position.x = ele[0];
+        vp.pose.position.y = ele[1];
+        vp.pose.position.z = ele[2];
+        tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, ele[3]);
+        vp.pose.orientation.x = q.x();
+        vp.pose.orientation.y = q.y();
+        vp.pose.orientation.z = q.z();
+        vp.pose.orientation.w = q.w();
+        trajectory.poses.push_back(vp);
+    }
+    ros::Duration(0.1).sleep();
+    trajectory_pub.publish(trajectory);
 }
