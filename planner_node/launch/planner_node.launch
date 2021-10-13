@@ -1,0 +1,12 @@
+<launch>
+    <node name="VID_SIP_Planner_Node" pkg="planner_node" type="plan" clear_params="true" output="screen">
+        <rosparam file="$(find planner_node)/settings/robdekon.yaml"/>
+    </node>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find planner_node)/rviz/SIPsetup.rviz" />
+    <node pkg="tf"
+        type="static_transform_publisher"
+        name="map2kopt_transform"
+        args="0 0 0 0 0 0 map kopt_frame 1000" />
+    <node name="VID_SIP_Requester_Node" pkg="request_client_node" type="request_client_node" clear_params="true" output="screen"/>
+</launch>
+

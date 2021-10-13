@@ -9,8 +9,20 @@
 #include "optec/qpOASES.hpp"
 #include "float.h"
 #include <vector>
+#include "planner_node/Region.h"
+#include <list>
 
+typedef Eigen::Vector4f StateVector;
 using namespace Eigen;
+#define OBSTACLE_DIST_THRESHOLD VID::Polygon::maxDist
+#define SQ(x) ((x)*(x))
+
+extern double g_camAngleHorizontal;
+extern double g_camAngleVertical;
+extern double g_camPitch;
+extern double g_max_obs_dim;
+extern double g_discretization_step;
+
 USING_NAMESPACE_QPOASES
 
 namespace VID
@@ -23,6 +35,7 @@ namespace VID
             int numOfVertices;
             Vector3f a;
             Vector3f aabs;
+            Vector3f centroid;
             /**
             * \brief Normals of the separating hyperplanes defined by the incidence angle
             * For eg: n1, n2, n3 ...... n#
@@ -39,6 +52,7 @@ namespace VID
             static double maxDist;
             static bool initialized;
             static std::vector<Vector3f> camBoundNormal;
+            // static std::list<VID::region*> obstacles;
         // Methods
             Polygon();
             ~Polygon();
@@ -46,7 +60,8 @@ namespace VID
             static void setCamBoundNormals();
             int getnumOfVertices() const;
             void setnumOfVertices(int n);
-            
+            std::vector<Vector3f> getVertices() const;
+            VID::region* IsPolyInCollision(StateVector& stateIn);
 
     };
 
@@ -56,5 +71,6 @@ double VID::Polygon::minDist = 0;
 double VID::Polygon::maxDist = DBL_MAX;
 bool VID::Polygon::initialized = false;
 std::vector<Vector3f> VID::Polygon::camBoundNormal;
+// std::list<VID::region*> VID::Polygon::obstacles(0, NULL);
 
 #endif // __POLYGON_OBJECT_H__

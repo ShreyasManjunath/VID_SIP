@@ -1,0 +1,39 @@
+#Names of stl file
+mesh_file_name: "robdekon.stl" # file should be present in request_client_node/meshes directory
+
+#planner parameters
+planner:
+  {
+    minIncidenceAngle: 10.0 # in Degrees
+  }
+
+
+#rotorcraft parameters
+rotorcraft:
+  {
+    maxSpeed: 12.0,
+    maxAngularSpeed: 3.49
+  }
+
+#Total cuboidal space available for flying
+space_boundary:
+  {
+    space_size: [200.0, 200.0, 50.0], #in meters
+    space_center: [0.0, 0.0, 0.0]
+  }
+
+#Starting Pose
+starting_pose:
+  {
+    postion_xyz: [0.0, 0.0, 4.0], #in meters
+    rotation_rpy: [0.0, 0.0, 0.0] #in degrees
+  }
+
+other_required_poses:
+  {
+    poses:
+      {
+        # TODO
+      }
+  }
+

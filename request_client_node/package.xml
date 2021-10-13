@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>request_client_node</name>
+  <version>1.0.0</version>
+  <description>The request_client_node package</description>
+
+  <maintainer email="shreyas.manjunath@iosb.fraunhofer.de">Shreyas Manjunath</maintainer>
+
+  <license>TODO</license>
+
+
+  <depend>roscpp</depend>
+  <depend>rospy</depend>
+  <depend>std_msgs</depend>
+  <depend>planner_node</depend>
+  <depend>roslib</depend>
+  <depend>message_generation</depend>
+  <depend>message_runtime</depend>
+  <buildtool_depend>catkin</buildtool_depend>
+
+
+  <export>
+  </export>
+</package>

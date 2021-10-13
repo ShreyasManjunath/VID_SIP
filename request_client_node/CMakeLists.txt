@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.14)
-project(planner_node)
+cmake_minimum_required(VERSION 3.0.2)
+project(request_client_node)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++17)
@@ -10,22 +10,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  roslib
   rospy
+  roslib
   std_msgs
-  optec
-  message_generation
   nav_msgs
   geometry_msgs
   shape_msgs
+  planner_node
+  message_generation
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
-find_package(cmake_modules REQUIRED)
-find_package(optec REQUIRED)
 find_package(Eigen3 REQUIRED)
-find_package(ortools CONFIG REQUIRED)
+find_package(cmake_modules REQUIRED)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -35,6 +33,27 @@ find_package(ortools CONFIG REQUIRED)
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
+
+## To declare and build messages, services or actions from within this
+## package, follow these steps:
+## * Let MSG_DEP_SET be the set of packages whose message types you use in
+##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
+## * In the file package.xml:
+##   * add a build_depend tag for "message_generation"
+##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
+##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
+##     but can be declared for certainty nonetheless:
+##     * add a exec_depend tag for "message_runtime"
+## * In this file (CMakeLists.txt):
+##   * add "message_generation" and every package in MSG_DEP_SET to
+##     find_package(catkin REQUIRED COMPONENTS ...)
+##   * add "message_runtime" and every package in MSG_DEP_SET to
+##     catkin_package(CATKIN_DEPENDS ...)
+##   * uncomment the add_*_files sections below as needed
+##     and list every .msg/.srv/.action file to be processed
+##   * uncomment the generate_messages entry below
+##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
+
 ## Generate messages in the 'msg' folder
 # add_message_files(
 #   FILES
@@ -43,10 +62,11 @@ find_package(ortools CONFIG REQUIRED)
 # )
 
 ## Generate services in the 'srv' folder
-add_service_files(
-   FILES
-   inspection.srv
-)
+# add_service_files(
+#   FILES
+#   Service1.srv
+#   Service2.srv
+# )
 
 ## Generate actions in the 'action' folder
 # add_action_files(
@@ -58,9 +78,7 @@ add_service_files(
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  std_msgs
-  nav_msgs
-  geometry_msgs
+  std_msgs  # Or other packages containing msgs
   shape_msgs
 )
 
@@ -94,8 +112,10 @@ generate_messages(
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-CATKIN_DEPENDS optec std_msgs message_runtime geometry_msgs
-INCLUDE_DIRS  ${Eigen_INCLUDE_DIRS}
+  INCLUDE_DIRS include ${Eigen_INCLUDE_DIRS}
+#  LIBRARIES request_client_node
+  CATKIN_DEPENDS std_msgs message_runtime
+#  DEPENDS system_lib
 )
 
 ###########
@@ -105,16 +125,16 @@ INCLUDE_DIRS  ${Eigen_INCLUDE_DIRS}
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  include
-  include/planner_node
-  ${catkin_INCLUDE_DIRS}
-  ${Eigen_INCLUDE_DIRS}
+ include
+ include/request_client_node
+ ${catkin_INCLUDE_DIRS}
+ ${Eigen_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/planner_node.cpp
-# )
+add_library(request_lib
+  src/Request.cpp
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -122,25 +142,8 @@ include_directories(
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-
-add_library(
-  ${PROJECT_NAME}
-  src/AGPSolver.cpp
-  src/Region.cpp
-  src/System.cpp
-  src/State.cpp
-  src/TSP.cpp
-  )
-
-target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}
-  ${optec_LIBRARIES}
-  )
-
-add_executable(plan
- src/plan.cpp
+add_executable(request_client_node 
+  src/planner_request_client.cpp
 )
 
 ## Rename C++ executable without prefix
@@ -152,12 +155,15 @@ add_executable(plan
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(request_client_node planner_node_generated_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(plan
-   ${catkin_LIBRARIES}
-   ${optec_LIBRARIES}
-   ${PROJECT_NAME}
-   ortools::ortools
+target_link_libraries(request_client_node
+  ${catkin_LIBRARIES}
+  request_lib
 )
 
+# endif()
+
+## Add folders to be run by python nosetests
+# catkin_add_nosetests(test)
