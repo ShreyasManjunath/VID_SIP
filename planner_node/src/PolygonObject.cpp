@@ -28,6 +28,12 @@ VID::Polygon::~Polygon()
     delete[] d;
 }
 
+double VID::Polygon::incidenceAngle = M_PI/3;
+double VID::Polygon::minDist = 0;
+double VID::Polygon::maxDist = DBL_MAX;
+bool VID::Polygon::initialized = false;
+std::vector<Vector3f> VID::Polygon::camBoundNormal;
+
 void VID::Polygon::setParam(double incidenceAngleIn, double minDistIn, double maxDistIn)
 {
     VID::Polygon::incidenceAngle = incidenceAngleIn;

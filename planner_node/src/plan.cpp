@@ -7,7 +7,6 @@
 #include "nav_msgs/Path.h"
 #include "planner_node/AGPSolver.h"
 #include "planner_node/PolygonObject.h"
-#include "planner_node/PolygonObject.hpp"
 #include "planner_node/inspection.h"
 #include "ros/ros.h"
 #include <geometry_msgs/Polygon.h>
@@ -21,6 +20,7 @@
 #include <nav_msgs/Path.h>
 #include "tf/tf.h"
 #include "planner_node/TSP.h"
+#include "planner_node/Planner.h"
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 

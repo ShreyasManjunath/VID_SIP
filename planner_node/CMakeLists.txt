@@ -127,11 +127,13 @@ include_directories(
 
 add_library(
   ${PROJECT_NAME}
+  src/PolygonObject.cpp
   src/AGPSolver.cpp
   src/Region.cpp
   src/System.cpp
   src/State.cpp
   src/TSP.cpp
+  src/Planner.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include "planner_node/Region.h"
 #include "planner_node/plan.hpp"
+#include "ros/ros.h"
 
 typedef VID::region reg_t;
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
@@ -38,6 +39,11 @@ namespace VID
             ~Planner();
             void plan();
             void preProcess();
+        private:
+            koptError_t getROSParams();
+            void setProblemBoundary();
+            std::vector<double> spaceSize;
+            std::vector<double> spaceCenter;
     };
 }
 

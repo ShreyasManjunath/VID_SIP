@@ -66,11 +66,6 @@ namespace VID
     };
 
 }
-double VID::Polygon::incidenceAngle = M_PI/3;
-double VID::Polygon::minDist = 0;
-double VID::Polygon::maxDist = DBL_MAX;
-bool VID::Polygon::initialized = false;
-std::vector<Vector3f> VID::Polygon::camBoundNormal;
-// std::list<VID::region*> VID::Polygon::obstacles(0, NULL);
+
 
 #endif // __POLYGON_OBJECT_H__
