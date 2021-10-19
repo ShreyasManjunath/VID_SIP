@@ -130,7 +130,7 @@ Vector3f VID::Polygon::findPolyAreaVector(std::vector<Vector3f> v)
     if(v.size() < 3)
     {
         ROS_ERROR("Not a plane, therefore, no area!");
-        return;
+        return Vector3f(0, 0, 0);
     }
     int N = v.size();
     Vector3f total(0.0, 0.0, 0.0);
