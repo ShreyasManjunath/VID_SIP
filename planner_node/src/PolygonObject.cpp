@@ -8,6 +8,8 @@
 
 #include "planner_node/PolygonObject.h"
 #include "planner_node/System.h"
+#include "ros/ros.h"
+#include <cmath>
 
 VID::Polygon::Polygon()
 {
@@ -121,6 +123,48 @@ VID::region* VID::Polygon::IsPolyInCollision(StateVector& stateIn)
     }
     
     return NULL;
+}
+
+Vector3f VID::Polygon::findPolyAreaVector(std::vector<Vector3f> v)
+{
+    if(v.size() < 3)
+    {
+        ROS_ERROR("Not a plane, therefore, no area!");
+        return;
+    }
+    int N = v.size();
+    Vector3f total(0.0, 0.0, 0.0);
+    for(int i = 0; i < N; i++)
+    {
+        Vector3f vi1 = v[i];
+        Vector3f vi2 = v[(i+1) % N];
+        Vector3f prod = vi1.cross(vi2);
+        total[0] += prod[0];
+        total[1] += prod[1];
+        total[2] += prod[2];
+    }
+    total = total/ 2;
+    return total;
+
+}
+
+Vector3f VID::Polygon::findUnitNormal(Vector3f a, Vector3f b, Vector3f c)
+{
+    Matrix3f A; Matrix3f B; Matrix3f C;
+    A << 1, a[1], a[2],
+         1, b[1], b[2],
+         1, c[1], c[2];
+    B << a[0], 1, a[2],
+         b[0], 1, b[2],
+         c[0], 1, c[2];
+    C << a[0], a[1], 1,
+         b[0], b[1], 1,
+         c[0], c[1], 1;
+    float x = A.determinant();
+    float y = B.determinant();
+    float z = C.determinant();
+    float magnitude = std::hypot(x, y, z);
+    return Vector3f(x/magnitude, y/magnitude, z/magnitude);
 }
 
 #endif
