@@ -165,6 +165,10 @@ Vector3f VID::Polygon::findUnitNormal(Vector3f a, Vector3f b, Vector3f c)
     float z = C.determinant();
     float magnitude = std::hypot(x, y, z);
     return Vector3f(x/magnitude, y/magnitude, z/magnitude);
+
+    // Vector3f area = ((b - a).cross(c - b))/2;
+    // Vector3f normal = area / area.norm();
+    // return normal;
 }
 
 #endif

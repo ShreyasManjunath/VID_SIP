@@ -36,8 +36,8 @@ reg_t problemBoundary;
 koptError_t koptError;
 std::vector<Vector3f> inputPoly;
 double minIncidenceAngle = degreesToRadians(10);
-double minDist = 6.0;
-double maxDist = 8.0;
+double minDist = 10;
+double maxDist = 20;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
 double g_security_distance = 2.0;
@@ -54,6 +54,7 @@ std::vector<geometry_msgs::Polygon> inspectionArea;
 void visualize(StateVector st);
 void drawPolygon(poly_t* tmp);
 void drawTrajectory(std::vector<StateVector>& tour);
+void readAndInsertPolygon(std::vector<poly_t *>& polygons);
 ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
 ros::Publisher trajectory_pub;
@@ -66,7 +67,7 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     VID::Polygon::setCamBoundNormals();
 
     // Starting Point and other required poses
-    for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
+    /*for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
         itFixPose != req.requiredPoses.end() && (itFixPose != req.requiredPoses.end()-1 || req.requiredPoses.size() == 1);
         itFixPose++)
     {
@@ -94,7 +95,8 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         polygons.push_back(tmp);
         drawPolygon(tmp);
         ros::Duration(0.01).sleep();
-    }
+    }*/
+    readAndInsertPolygon(polygons);
 
     maxID = polygons.size();
     g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
@@ -126,7 +128,9 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         StateVector* s2 = NULL;
         /* sample viewpoint */
         StateVector VPtmp;
-        AGPSolver agp(polygons[i], 3, 8);
+        int numOfVertices = polygons[i]->getnumOfVertices();
+        int numOfConstraints = numOfVertices + 1 + 4;
+        AGPSolver agp(polygons[i], 3, numOfConstraints);
         VPtmp = agp.dualBarrierSamplerFresh(s1, s2, &VP[i]);
         VP[i] = VPtmp; VPList.push_back(VPtmp);
         // visualize(VPtmp);
@@ -179,8 +183,8 @@ int main(int argc, char **argv) {
     viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
     trajectory_pub = n.advertise<nav_msgs::Path>("visualization_marker", 1);
     ros::Duration(3).sleep();
-    // geometry_msgs::Polygon P;
-    // geometry_msgs::Point32 p32;
+    geometry_msgs::Polygon P;
+    geometry_msgs::Point32 p32;
     // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
@@ -191,21 +195,21 @@ int main(int argc, char **argv) {
     // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
     // inspectionArea.push_back(P);
     // P.points.clear();
-    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
-    // p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    // p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
     // p32.x = 20.005768; p32.y = 14; p32.z = 4.5; P.points.push_back(p32);
     // p32.x = 24.500000; p32.y = 14; p32.z = 3; P.points.push_back(p32);
     // p32.x = 20.005768; p32.y = 14; p32.z = 3; P.points.push_back(p32);
@@ -215,6 +219,22 @@ int main(int argc, char **argv) {
     // p32.x = 2; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
     // p32.x = 2; p32.y = 2; p32.z = 3; P.points.push_back(p32);
     // inspectionArea.push_back(P);
+
+    // geometry_msgs::Polygon P;
+    // geometry_msgs::Point32 p32;
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 9; p32.z = 2; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+
+    P.points.clear();
+    p32.x = 1.86627; p32.y =  4.45662; p32.z =  3.44553; P.points.push_back(p32);
+    p32.x = 2.8217; p32.y =  3.11861; p32.z =  2.63698; P.points.push_back(p32);
+    p32.x = 4.83986; p32.y =  3.30847; p32.z =  2.68395; P.points.push_back(p32);
+    p32.x = 5.40992; p32.y =  5.48551; p32.z = 3.93268; P.points.push_back(p32);
+    inspectionArea.push_back(P);
 
     // plan();
     ros::ServiceServer service = n.advertiseService("inspectionPath", plan);
@@ -311,4 +331,21 @@ void drawTrajectory(std::vector<StateVector>& tour)
     }
     ros::Duration(0.1).sleep();
     trajectory_pub.publish(trajectory);
+}
+
+void readAndInsertPolygon(std::vector<poly_t *>& polygons)
+{
+    for(std::vector<geometry_msgs::Polygon>::iterator it = inspectionArea.begin(); it != inspectionArea.end(); it++)
+    {
+        poly_t *tmp = new poly_t;
+        for(auto& vert : (*it).points)
+        {
+            tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+        }
+        tmp->Fixpoint = false;
+        AGPSolver::initPolygon(tmp);
+        polygons.push_back(tmp);
+        drawPolygon(tmp);
+        ros::Duration(0.01).sleep();
+    }
 }

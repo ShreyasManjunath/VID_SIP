@@ -55,6 +55,28 @@ void AGPSolver::initPolygon(poly_t* p)
             }
         }
     }
+    else if(numOfVertices > 3)
+    {
+        poly.a = VID::Polygon::findPolyAreaVector(poly.vertices);
+        poly.aabs = VID::Polygon::findUnitNormal(poly.vertices[0], poly.vertices[1], poly.vertices[2]);
+        std::cout << poly.aabs << std::endl;
+        for(int i = 0; i < numOfVertices; i++)
+        {
+            if(i == numOfVertices-1)
+            {
+                Vector3f q = poly.vertices[i-(numOfVertices-1)] - poly.vertices[i]; q.normalize();
+                AngleAxisf m = AngleAxisf(poly.incidenceAngle, q);
+                Vector3f n_tmp = m * poly.a; n_tmp.normalize();
+                poly.n.push_back(n_tmp);
+            }
+            else{
+                Vector3f q = poly.vertices[i+1] - poly.vertices[i]; q.normalize();
+                AngleAxisf m = AngleAxisf(poly.incidenceAngle, q);
+                Vector3f n_tmp = m * poly.a; n_tmp.normalize();
+                poly.n.push_back(n_tmp);
+            }
+        }
+    }
 
 }
 
@@ -104,8 +126,8 @@ void AGPSolver::setDminDmaxConstraint(bool flag)
 
     int j = currentIndexOfBoundMatrices;
     // lba and uba
-    poly.lbA[j] = poly.aabs.dot(poly.vertices[0]+ poly.aabs * poly.minDist); 
-    poly.ubA[j] = poly.aabs.dot(poly.vertices[0]+ poly.aabs * poly.maxDist);
+    poly.lbA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.minDist); 
+    poly.ubA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.maxDist);
     currentIndexOfAMatrix = currentIndexOfAMatrix + 3;
     currentIndexOfBoundMatrices = currentIndexOfBoundMatrices + 1;
 }
@@ -158,17 +180,40 @@ void AGPSolver::setFOVConstraints(int pw, bool flag)
     Vector3f right(-sin(psiD-psiInc/2.0), cos(psiD-psiInc/2.0),0.0);
     Vector3f left(-sin(psiD+psiInc/2.0), cos(psiD+psiInc/2.0),0.0);
     Vector3f lowerCam(sin(angleLower)*cos(psiD), sin(angleLower)*sin(psiD), -cos(angleLower));
-    Vector3f low = poly.vertices[0];
-    if(low.dot(lowerCam)<poly.vertices[1].dot(lowerCam))
-        low = poly.vertices[1];
-    if(low.dot(lowerCam)<poly.vertices[2].dot(lowerCam))
-        low = poly.vertices[2];
     Vector3f upperCam(-sin(angleUpper)*cos(psiD), -sin(angleUpper)*sin(psiD), cos(angleUpper));
+    Vector3f low = poly.vertices[0];
     Vector3f high = poly.vertices[0];
-    if(high.dot(upperCam)<poly.vertices[1].dot(upperCam))
-        high = poly.vertices[1];
-    if(high.dot(upperCam)<poly.vertices[2].dot(upperCam))
-        high = poly.vertices[2];
+    if(numOfVertices == 3)
+    {
+        if(low.dot(lowerCam)<poly.vertices[1].dot(lowerCam))
+            low = poly.vertices[1];
+        if(low.dot(lowerCam)<poly.vertices[2].dot(lowerCam))
+            low = poly.vertices[2];
+        
+        
+        if(high.dot(upperCam)<poly.vertices[1].dot(upperCam))
+            high = poly.vertices[1];
+        if(high.dot(upperCam)<poly.vertices[2].dot(upperCam))
+            high = poly.vertices[2];
+    }
+    else if(numOfVertices > 3)
+    {
+        for(int i = 1; i < numOfVertices; i++)
+        {
+            if(low.dot(lowerCam)<poly.vertices[i].dot(lowerCam))
+            {
+                low = poly.vertices[i]; 
+            }
+        }
+        for(int i = 1; i < numOfVertices; i++)
+        {
+            if(high.dot(upperCam)<poly.vertices[i].dot(upperCam))
+            {
+                low = poly.vertices[i]; 
+            }
+        }
+    }
+    
 
     int j = currentIndexOfBoundMatrices;
     /* fill elements 5-8 of lbA vector
@@ -345,9 +390,9 @@ bool AGPSolver::isVisible(StateVector s)
 {
     Vector3f st(s[0], s[1], s[2]);
     auto vertices = poly.getVertices();
-    if(poly.aabs.dot(st-vertices[0]-poly.aabs*poly.minDist)<0)
+    if(poly.aabs.dot(st-poly.centroid-poly.aabs*poly.minDist)<0)
         return false;
-    if(poly.aabs.dot(st-vertices[0]-poly.aabs*poly.maxDist)>0)
+    if(poly.aabs.dot(st-poly.centroid-poly.aabs*poly.maxDist)>0)
         return false;
 
     // if((st - vertices[0]).dot(poly.n[0]) < 0)
