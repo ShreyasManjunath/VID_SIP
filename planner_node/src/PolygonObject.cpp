@@ -148,27 +148,35 @@ Vector3f VID::Polygon::findPolyAreaVector(std::vector<Vector3f> v)
 
 }
 
-Vector3f VID::Polygon::findUnitNormal(Vector3f a, Vector3f b, Vector3f c)
+Vector3f VID::Polygon::findUnitNormal(std::vector<Vector3f> v)
 {
-    Matrix3f A; Matrix3f B; Matrix3f C;
-    A << 1, a[1], a[2],
-         1, b[1], b[2],
-         1, c[1], c[2];
-    B << a[0], 1, a[2],
-         b[0], 1, b[2],
-         c[0], 1, c[2];
-    C << a[0], a[1], 1,
-         b[0], b[1], 1,
-         c[0], c[1], 1;
-    float x = A.determinant();
-    float y = B.determinant();
-    float z = C.determinant();
-    float magnitude = std::hypot(x, y, z);
-    return Vector3f(x/magnitude, y/magnitude, z/magnitude);
-
+    Vector3f normal(0.0, 0.0, 0.0);
+    int numOfVertices = v.size();
+    for(int i = 0; i < numOfVertices; i++)
+    {
+        Matrix3f A; Matrix3f B; Matrix3f C;
+        Vector3f a = v[i % numOfVertices];
+        Vector3f b = v[(i+1) % numOfVertices];
+        Vector3f c = v[(i+2) % numOfVertices];
+        A << 1, a[1], a[2],
+            1, b[1], b[2],
+            1, c[1], c[2];
+        B << a[0], 1, a[2],
+            b[0], 1, b[2],
+            c[0], 1, c[2];
+        C << a[0], a[1], 1,
+            b[0], b[1], 1,
+            c[0], c[1], 1;
+        float x = A.determinant();
+        float y = B.determinant();
+        float z = C.determinant();
+        float magnitude = std::hypot(x, y, z);
+        normal += Vector3f(x/magnitude, y/magnitude, z/magnitude);
+    }
+    
     // Vector3f area = ((b - a).cross(c - b))/2;
     // Vector3f normal = area / area.norm();
-    // return normal;
+    return normal/numOfVertices;
 }
 
 #endif

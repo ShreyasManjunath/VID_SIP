@@ -38,7 +38,7 @@ koptError_t koptError;
 std::vector<Vector3f> inputPoly;
 double minIncidenceAngle = degreesToRadians(10);
 double minDist = 6.0;
-double maxDist = 8.0;
+double maxDist = 20.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
 double g_security_distance = 2.0;

@@ -58,7 +58,7 @@ void AGPSolver::initPolygon(poly_t* p)
     else if(numOfVertices > 3)
     {
         poly.a = VID::Polygon::findPolyAreaVector(poly.vertices);
-        poly.aabs = VID::Polygon::findUnitNormal(poly.vertices[0], poly.vertices[1], poly.vertices[2]);
+        poly.aabs = VID::Polygon::findUnitNormal(poly.vertices);
         std::cout << poly.aabs << std::endl;
         for(int i = 0; i < numOfVertices; i++)
         {
