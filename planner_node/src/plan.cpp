@@ -21,6 +21,7 @@
 #include "tf/tf.h"
 #include "planner_node/TSP.h"
 #include "planner_node/Planner.h"
+#include <geometry_msgs/PoseArray.h>
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 
@@ -36,8 +37,8 @@ reg_t problemBoundary;
 koptError_t koptError;
 std::vector<Vector3f> inputPoly;
 double minIncidenceAngle = degreesToRadians(10);
-double minDist = 10;
-double maxDist = 20;
+double minDist = 6.0;
+double maxDist = 8.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
 double g_security_distance = 2.0;
@@ -58,6 +59,9 @@ void readAndInsertPolygon(std::vector<poly_t *>& polygons);
 ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
 ros::Publisher trajectory_pub;
+ros::Publisher computed_trajectory_posearray_pub;
+// Pose Array to store the computed trajectory poses.
+geometry_msgs::PoseArray  computed_trajectory_posearray;
 
 bool plan(planner_node::inspection::Request& req, planner_node::inspection::Response& res)
 {
@@ -67,7 +71,7 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     VID::Polygon::setCamBoundNormals();
 
     // Starting Point and other required poses
-    /*for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
+    for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
         itFixPose != req.requiredPoses.end() && (itFixPose != req.requiredPoses.end()-1 || req.requiredPoses.size() == 1);
         itFixPose++)
     {
@@ -83,7 +87,7 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     }
 
     // Read the inspection area (or Mesh data)
-    for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
+    /*for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
     {
         poly_t *tmp = new poly_t;
         for(auto& vert : (*it).points)
@@ -164,6 +168,29 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     tsp_object->solve();
     auto final_route = tsp_object->getFinalRoute();
     drawTrajectory(final_route);
+    for(auto& vp : final_route)
+    {
+        geometry_msgs::Pose pose;
+        pose.position.x = vp[0];
+        pose.position.y = vp[1];
+        pose.position.z = vp[2];
+
+        tf::Quaternion q = tf::createQuaternionFromRPY(0.0, 0.0, vp[3]);
+        pose.orientation.x = q.x();
+        pose.orientation.y = q.y();
+        pose.orientation.z = q.z();
+        pose.orientation.w = q.w();
+
+        computed_trajectory_posearray.poses.push_back(pose);
+    }
+
+    // Publish the poses for 10 seconds atleast
+    for(int j= 0; j < 100 && !ros::isShuttingDown(); ++j){
+        computed_trajectory_posearray.header.frame_id = "/kopt_frame";
+        computed_trajectory_posearray.header.stamp = ros::Time::now();
+        computed_trajectory_posearray_pub.publish(computed_trajectory_posearray);
+        ros::Duration(0.25).sleep();
+    }
 
     if(koptError != SUCCESSFUL)
     {
@@ -182,19 +209,20 @@ int main(int argc, char **argv) {
     mesh_pub = n.advertise<nav_msgs::Path>("stl_mesh", 1);
     viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
     trajectory_pub = n.advertise<nav_msgs::Path>("visualization_marker", 1);
+    computed_trajectory_posearray_pub = n.advertise<geometry_msgs::PoseArray>("/VID_SIP/computed_trajectory_posearray", 1);
     ros::Duration(3).sleep();
     geometry_msgs::Polygon P;
     geometry_msgs::Point32 p32;
-    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
     p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
     p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
     p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
@@ -210,11 +238,11 @@ int main(int argc, char **argv) {
     p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
     inspectionArea.push_back(P);
     P.points.clear();
-    // p32.x = 20.005768; p32.y = 14; p32.z = 4.5; P.points.push_back(p32);
-    // p32.x = 24.500000; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 20.005768; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
+    p32.x = 20.005768; p32.y = 14; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 24.500000; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 20.005768; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
     // p32.x = 6.505767; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
     // p32.x = 2; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
     // p32.x = 2; p32.y = 2; p32.z = 3; P.points.push_back(p32);
@@ -222,12 +250,12 @@ int main(int argc, char **argv) {
 
     // geometry_msgs::Polygon P;
     // geometry_msgs::Point32 p32;
-    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
-    p32.x = 24.5; p32.y = 9; p32.z = 2; P.points.push_back(p32);
-    inspectionArea.push_back(P);
+    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 9; p32.z = 2; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
 
     P.points.clear();
     p32.x = 1.86627; p32.y =  4.45662; p32.z =  3.44553; P.points.push_back(p32);
