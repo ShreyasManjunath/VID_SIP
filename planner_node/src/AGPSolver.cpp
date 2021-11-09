@@ -11,6 +11,8 @@ extern double g_angular_discretization_step;
 extern koptError_t koptError;
 extern double g_security_distance;
 
+#define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
+
 AGPSolver::AGPSolver(poly_t* p, int variables, int constraints)
 :m_variables{variables}, m_constraints{constraints}, poly{*p}
 {
@@ -532,4 +534,65 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
     ROS_INFO("Sampled VP: {x, y, z, yaw} = {%f, %f, %f, %f}", best[0], best[1],best[2], best[3]);
     return best;
 
+}
+
+Matrix3f AGPSolver::cameraMtx;
+
+void AGPSolver::setCameraMtx(std::string node)
+{
+    std::vector<float> K;
+    ros::param::get(node + "/camera/K", K);
+    AGPSolver::cameraMtx << K[0], K[1], K[2],
+                            K[3], K[4], K[5],
+                            K[6], K[7], K[8];
+}
+
+std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(Vector3f posInWorld, float yaw)
+{
+    Matrix3f R_w2c;
+    R_w2c << 0, 0, 1.0,
+             -1.0, 0, 0,
+              0, -1.0, 0;
+    AngleAxis rollAngle_y((float)0.0, Vector3f::UnitX());
+    AngleAxis pitchAngle_y((float)0.0, Vector3f::UnitZ());
+    AngleAxis yawAngle_y((float)yaw, Vector3f::UnitZ());
+
+    Quaternion<float> q_yaw = rollAngle_y * pitchAngle_y * yawAngle_y;
+    R_w2c = q_yaw.matrix() * R_w2c;
+
+    Vector3f posInCC = R_w2c * posInWorld;
+
+    AngleAxis rollAngle_p((float)0.0, Vector3f::UnitZ());
+    AngleAxis pitchAngle_p((float)degreesToRadians(10), Vector3f::UnitX());
+    AngleAxis yawAngle_p((float)0.0, Vector3f::UnitY());
+
+    Quaternion<float> q_pitch = rollAngle_p * yawAngle_p * pitchAngle_p;
+
+
+    Matrix3f relRot = q_pitch.matrix() * R_w2c;
+
+    Matrix4f T_w2c;
+    T_w2c <<  relRot, posInCC.transpose(),
+              0, 0, 0, 1;
+    
+
+    std::vector<Vector3f> verticesInCC; // Vertices in Camera coordinate system.
+    for(auto& v : poly.vertices)
+    {
+        Vector4f vertexHomogenous(v[0], v[1], v[2], 1);
+        Vector4f vertexInCC = T_w2c * vertexHomogenous;
+        verticesInCC.push_back(Vector3f(vertexInCC[0], vertexInCC[1], vertexInCC[2]));
+    }
+
+    std::vector<Vector2f> verticesOnScreen; // Vertices in 2D screen coordinate system.
+    for(auto& ver : verticesInCC)
+    {
+        Vector3f vertexOnScreen = cameraMtx * ver;
+        float Zc = vertexOnScreen[2];
+        float u = vertexOnScreen[0] / Zc;
+        float v = vertexOnScreen[1] / Zc;
+        verticesOnScreen.push_back(Vector2f(u, v));
+    }
+
+    return verticesOnScreen;
 }

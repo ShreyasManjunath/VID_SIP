@@ -37,3 +37,8 @@ other_required_poses:
       }
   }
 
+camera:
+  {
+    K: [] # Camera mtx format [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+  }
+

@@ -50,6 +50,12 @@ class AGPSolver
         bool isVisible(StateVector s);
         bool IsInCollision(StateVector s);
         Vector3f camBoundRotated(Vector3f normal, double roll, double yaw);
+        std::vector<Vector2f> locateVerticesOnScreen(Vector3f posInWorld, float yaw);
+
+        // Static members and methods
+        static Matrix3f cameraMtx;
+
+        static void setCameraMtx(std::string node);
 };
 
 
