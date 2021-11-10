@@ -69,7 +69,7 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
-
+    AGPSolver::setCameraMtx("~");
     // Starting Point and other required poses
     for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
         itFixPose != req.requiredPoses.end() && (itFixPose != req.requiredPoses.end()-1 || req.requiredPoses.size() == 1);

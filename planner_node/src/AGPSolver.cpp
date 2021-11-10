@@ -372,19 +372,27 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
     double alfa1 = 0.0;
     double alfa2 = 0.0;
 
+    float maxArea = 0.0;
     for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step)
     {
         StateVector s = g;
         s[3] = psi;
         double c = 0.9 * DBL_MAX;
-        if(c <= costOrientation && this->isVisible(s))
+
+        // Max Screen area
+        float area = 0.0;
+        std::vector<Vector2f> verticesOnScreen = locateVerticesOnScreen(this->poly.vertices, Vector3f(s[0], s[1], s[2]), (float)psi);
+        area = findAreaOfPolyOnScreen(verticesOnScreen);
+        if(c <= costOrientation && this->isVisible(s) && area >= maxArea)
         {
             g[3] = s[3];
-            costOrientation = c;
+            costOrientation = c; 
+            maxArea = area;
             this->orientationSolutionFound = true;
         }
-    }
 
+    }
+    // std::cout << "Max Area: " << maxArea << std::endl;
     return costOrientation;
 }
 
@@ -547,42 +555,50 @@ void AGPSolver::setCameraMtx(std::string node)
                             K[6], K[7], K[8];
 }
 
-std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(Vector3f posInWorld, float yaw)
+std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(std::vector<Vector3f> vertices, Vector3f posInWorld, float yaw)
 {
     Matrix3f R_w2c;
     R_w2c << 0, 0, 1.0,
              -1.0, 0, 0,
               0, -1.0, 0;
     AngleAxis rollAngle_y((float)0.0, Vector3f::UnitX());
-    AngleAxis pitchAngle_y((float)0.0, Vector3f::UnitZ());
+    AngleAxis pitchAngle_y((float)0.0, Vector3f::UnitY());
     AngleAxis yawAngle_y((float)yaw, Vector3f::UnitZ());
 
     Quaternion<float> q_yaw = rollAngle_y * pitchAngle_y * yawAngle_y;
+    // std::cout << q_yaw.x() << " " << q_yaw.y() << " "<< q_yaw.z() << " "<< q_yaw.w() << std::endl;
     R_w2c = q_yaw.matrix() * R_w2c;
-
+    // std::cout << "q_yaw_matrix: " << std::endl << q_yaw.matrix() << std::endl;
+    // std::cout << "R_w2c: " << std::endl << R_w2c << std::endl;
     Vector3f posInCC = R_w2c * posInWorld;
 
     AngleAxis rollAngle_p((float)0.0, Vector3f::UnitZ());
-    AngleAxis pitchAngle_p((float)degreesToRadians(10), Vector3f::UnitX());
+    AngleAxis pitchAngle_p((float)(-g_camPitch), Vector3f::UnitX());
     AngleAxis yawAngle_p((float)0.0, Vector3f::UnitY());
 
     Quaternion<float> q_pitch = rollAngle_p * yawAngle_p * pitchAngle_p;
 
-
     Matrix3f relRot = q_pitch.matrix() * R_w2c;
 
     Matrix4f T_w2c;
-    T_w2c <<  relRot, posInCC.transpose(),
+    T_w2c <<  relRot(0,0), relRot(0,1),relRot(0,2), posInCC[0],
+              relRot(1,0), relRot(1,1), relRot(1,2), posInCC[1],
+              relRot(2,0), relRot(2,1), relRot(2,2), posInCC[2],
               0, 0, 0, 1;
     
-
+    
     std::vector<Vector3f> verticesInCC; // Vertices in Camera coordinate system.
-    for(auto& v : poly.vertices)
+    for(auto& v : vertices)
     {
         Vector4f vertexHomogenous(v[0], v[1], v[2], 1);
         Vector4f vertexInCC = T_w2c * vertexHomogenous;
         verticesInCC.push_back(Vector3f(vertexInCC[0], vertexInCC[1], vertexInCC[2]));
     }
+
+    // for(auto v : verticesInCC)
+    // {
+    //     std::cout << "verticesInCC: " << std::endl << v << std::endl;
+    // }
 
     std::vector<Vector2f> verticesOnScreen; // Vertices in 2D screen coordinate system.
     for(auto& ver : verticesInCC)
@@ -594,5 +610,36 @@ std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(Vector3f posInWorld, flo
         verticesOnScreen.push_back(Vector2f(u, v));
     }
 
+    // for(auto v : verticesOnScreen)
+    // {
+    //     std::cout << "verticesOnScreen: " << std::endl << v << std::endl;
+    // }
+
     return verticesOnScreen;
+}
+
+float AGPSolver::findAreaOfPolyOnScreen(std::vector<Vector2f>& verOnScreen)
+{
+    std::vector<Vector2f> v = verOnScreen;
+    int N = verOnScreen.size();
+    float area = 0.0;
+    // for(auto v :verOnScreen)
+    // {
+    //     std::cout << "Vertex: " << v.transpose() << std::endl;
+    // }
+    if(N >= 3)
+    {
+        float S_poly = 0.0;
+        for(int i = 0; i < N; i++)
+        {
+            S_poly += (v[i][0] * v[(i+1) % N][1] - v[i][1] * v[(i+1) % N][0]);
+        }
+        area = abs(0.5 * S_poly);
+    }
+    else
+    {
+        ROS_ERROR("OnScreen: Not a 2D shape, therefore, no area!");
+    }
+    
+    return area;
 }
