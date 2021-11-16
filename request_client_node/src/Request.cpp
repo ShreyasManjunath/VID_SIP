@@ -44,13 +44,13 @@ void VID::Request::setStartingPose(std::string paramName)
 {
     std::vector<float> pos;
     std::vector<float> rot;
-    bool param_exists = (!ros::param::get(paramName + "/position_xyz", pos)) || (!ros::param::get(paramName + "/rotation_rpy", rot));
+    bool param_exists = (ros::param::get(paramName + "/position_xyz", pos)) && (ros::param::get(paramName + "/rotation_rpy", rot));
     bool data_vectors_empty = pos.empty() || rot.empty();
     bool data_vectors_complete = (pos.size() == 3 || rot.size() == 3);
     if(!param_exists || data_vectors_empty || !data_vectors_complete)
     {
         std::string message = "Starting Pose empty/incomplete: " + paramName + "/position_xyz  or " + paramName + "/rotation_rpy";
-        ROS_INFO("%s", message);
+        ROS_INFO(message.c_str());
         pos = {0.0, 0.0, 5.0}; rot = {0.0 , 0.0, 0.0};
         ROS_INFO("Setting Starting Pose to default pos = [%f, %f, %f], rot = [%f, %f, %f]", 
                  pos[0], pos[1], pos[2], rot[0], rot[1], rot[2]);

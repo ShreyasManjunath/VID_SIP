@@ -4,7 +4,9 @@ mesh_file_name: "robdekon.stl" # file should be present in request_client_node/m
 #planner parameters
 planner:
   {
-    minIncidenceAngle: 10.0 # in Degrees
+    minIncidenceAngle: 10.0, # in Degrees
+    dmin: 3.0,
+    dmax: 10.0
   }
 
 
@@ -25,7 +27,7 @@ space_boundary:
 #Starting Pose
 starting_pose:
   {
-    postion_xyz: [0.0, 0.0, 4.0], #in meters
+    position_xyz: [0.0, 0.0, 4.0], #in meters
     rotation_rpy: [0.0, 0.0, 0.0] #in degrees
   }
 
