@@ -66,8 +66,18 @@ geometry_msgs::PoseArray  computed_trajectory_posearray;
 bool plan(planner_node::inspection::Request& req, planner_node::inspection::Response& res)
 {
     koptError = SUCCESSFUL;
+    // Get all necessary params from ROSPARAM server
     ros::param::get("/VID_SIP_Planner_Node/planner/dmin", minDist);
     ros::param::get("/VID_SIP_Planner_Node/planner/dmax", maxDist);
+    ros::param::get("/VID_SIP_Planner_Node/planner/minIncidenceAngle", minIncidenceAngle);
+    ros::param::get("/VID_SIP_Planner_Node/camera/horizontal_fov", g_camAngleHorizontal);
+    ros::param::get("/VID_SIP_Planner_Node/camera/vertical_fov", g_camAngleVertical);
+    ros::param::get("/VID_SIP_Planner_Node/camera/pitch", g_camPitch);
+
+
+    bool DEBUG_MODE = false;
+    ros::param::get("/VID_SIP_Planner_Node/debug_mode", DEBUG_MODE);
+
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
@@ -87,22 +97,28 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         tmp->Fixpoint = true;
         polygons.push_back(tmp);
     }
-
-    // Read the inspection area (or Mesh data)
-    // for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
-    // {
-    //     poly_t *tmp = new poly_t;
-    //     for(auto& vert : (*it).points)
-    //     {
-    //         tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
-    //     }
-    //     tmp->Fixpoint = false;
-    //     AGPSolver::initPolygon(tmp);
-    //     polygons.push_back(tmp);
-    //     drawPolygon(tmp);
-    //     ros::Duration(0.01).sleep();
-    // }
-    readAndInsertPolygon(polygons);
+    
+    if(!DEBUG_MODE)
+    {
+        // Read the inspection area (or Mesh data)
+        for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
+        {
+            poly_t *tmp = new poly_t;
+            for(auto& vert : (*it).points)
+            {
+                tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+            }
+            tmp->Fixpoint = false;
+            AGPSolver::initPolygon(tmp);
+            polygons.push_back(tmp);
+            drawPolygon(tmp);
+            ros::Duration(0.01).sleep();
+        }
+    }
+    else
+    {
+        readAndInsertPolygon(polygons);
+    }
 
     maxID = polygons.size();
     g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
@@ -234,12 +250,12 @@ int main(int argc, char **argv) {
     // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
     // p32.x = 2; p32.y = 11; p32.z = 1.5; P.points.push_back(p32);
     // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
-    // p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    // p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
-    // P.points.clear();
+    P.points.clear();
+    p32.x = 15.505768; p32.y = 5; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 15.505768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    p32.x = 20.005768; p32.y = 2; p32.z = 4.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
+    P.points.clear();
     p32.x = 20.005768; p32.y = 14; p32.z = 4.5; P.points.push_back(p32);
     p32.x = 24.500000; p32.y = 14; p32.z = 3; P.points.push_back(p32);
     p32.x = 20.005768; p32.y = 14; p32.z = 3; P.points.push_back(p32);

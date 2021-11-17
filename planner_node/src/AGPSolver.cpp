@@ -28,13 +28,13 @@ void AGPSolver::initPolygon(poly_t* p)
     poly_t& poly = *p;
     poly.numOfVertices = poly.vertices.size();
     int numOfVertices = poly.getnumOfVertices();
-    Vector3f m(0, 0, 0);
+    Vector3f c(0, 0, 0);
     for(int i = 0; i < numOfVertices; i++)
     {
-        m = m + poly.vertices[i];
+        c = c + poly.vertices[i];
     }
-    m = m / numOfVertices;
-    poly.centroid = m;
+    c = c / numOfVertices;
+    poly.centroid = c;
 
     if(numOfVertices == 3)
     {
@@ -55,6 +55,11 @@ void AGPSolver::initPolygon(poly_t* p)
                 Vector3f n_tmp = m * poly.a; n_tmp.normalize();
                 poly.n.push_back(n_tmp);
             }
+        }
+        ROS_INFO("Hyperplane Normals:-");
+        for(auto& n : poly.n)
+        {
+            std::cout << n.transpose() << std::endl;
         }
     }
     else if(numOfVertices > 3)
@@ -115,6 +120,16 @@ void AGPSolver::calculateQProblemParams()
     
     this->setPositionConstraints(true); // Mandatory constraint
     this->setDminDmaxConstraint(true);
+    std::cout << "A mtx:"<<std::endl;
+    for(int i = 0; i < 12; i=i+3)
+    {
+        ROS_INFO("%f, %f, %f", poly.A[i],poly.A[i+1], poly.A[i+2]);
+    }
+    std::cout << "lowerBound mtx:"<<std::endl;
+    ROS_INFO("%f, %f, %f, %f", poly.lbA[0],poly.lbA[1], poly.lbA[2], poly.lbA[3]);
+    std::cout << "upperbound dmax:"<<std::endl;
+    ROS_INFO("%f", poly.ubA[3]);
+
 
     Options options;
     this->QPSolver->setOptions( options );
@@ -172,7 +187,7 @@ void AGPSolver::setFOVConstraints(int pw, bool flag)
 {
     double angleLower = g_camPitch + g_camAngleVertical/2.0;
     double angleUpper = g_camPitch - g_camAngleVertical/2.0;
-
+    // ROS_INFO("AngleLower: %f", angleLower); ROS_INFO("AngleUpper: %f", angleUpper);
     int maxPW = g_convex_pieces;
     double psiInc = 2*M_PI/maxPW;
 
@@ -215,6 +230,8 @@ void AGPSolver::setFOVConstraints(int pw, bool flag)
             }
         }
     }
+
+    ROS_INFO("low: %f, %f, %f", low[0],low[1], low[2]); ROS_INFO("high: %f, %f, %f", high[0],high[1], high[2]);
     
 
     int j = currentIndexOfBoundMatrices;
@@ -305,7 +322,7 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         g << poly.centroid[0] + DD * poly.aabs[0],
              poly.centroid[1] + DD * poly.aabs[1],
              poly.centroid[2] + DD * poly.aabs[2], 0.0;
-             
+        ROS_INFO("g: {x, y, z} = {%f, %f, %f}", g[0], g[1],g[2]);
         static real_t lbx[3] = { X_MIN, Y_MIN, Z_MIN };
         static real_t ubx[3] = { X_MAX, Y_MAX, Z_MAX };
         int nWSR = 100;
@@ -320,6 +337,8 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         poly.d[0] = -(4.0 + 2.0*g_const_D) * g[0];
         poly.d[1] = -(4.0 + 2.0*g_const_D) * g[1];
         poly.d[2] = -(4.0 + 2.0*g_const_D) * g[2];
+
+        ROS_INFO("gradient d: {x, y, z} = {%f, %f, %f}", poly.d[0], poly.d[1],poly.d[2]);
         if(SUCCESSFUL_RETURN != (re = this->QPSolver->init(poly.H, poly.d, poly.A, lbx, ubx, poly.lbA, poly.ubA, nWSR)))
         {
             // ROS_INFO("Return Value: %d", re);
@@ -341,7 +360,7 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
 
         real_t xOptPosition[3]; // To store the optimum position obtained by the solver.
         this->QPSolver->getPrimalSolution(xOptPosition);
-        
+
         g[0] = xOptPosition[0];
         g[1] = xOptPosition[1];
         g[2] = xOptPosition[2];
@@ -562,7 +581,11 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
     }
     for(int i = 0; i < 4; i++)
         assert(best[i] < 1e15 && best[i] > -1e15);
-    
+
+    ROS_INFO("Triangle :\nv1 = {%f, %f, %f}\n v2= {%f, %f, %f} \n v3 = {%f, %f, %f}", poly.vertices[0][0], poly.vertices[0][1],poly.vertices[0][2],
+    poly.vertices[1][0], poly.vertices[1][1],poly.vertices[1][2], poly.vertices[2][0], poly.vertices[2][1],poly.vertices[2][2]);
+    ROS_INFO("Incidence angle: %f", poly.incidenceAngle);
+    ROS_INFO("Centroid: {x, y, z} = {%f, %f, %f}", poly.centroid[0], poly.centroid[1],poly.centroid[2]);
     ROS_INFO("Sampled VP: {x, y, z, yaw} = {%f, %f, %f, %f}", best[0], best[1],best[2], best[3]);
     return best;
 

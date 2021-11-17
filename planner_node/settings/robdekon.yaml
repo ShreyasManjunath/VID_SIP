@@ -1,12 +1,13 @@
 #Names of stl file
 mesh_file_name: "robdekon.stl" # file should be present in request_client_node/meshes directory
+debug_mode: true # Change to true or false accordingly
 
 #planner parameters
 planner:
   {
-    minIncidenceAngle: 10.0, # in Degrees
+    minIncidenceAngle: deg(10.0), # in Degrees
     dmin: 3.0,
-    dmax: 10.0
+    dmax: 8.0
   }
 
 
@@ -41,6 +42,9 @@ other_required_poses:
 
 camera:
   {
-    K: [277.191356, 0.0, 320.5, 0.0, 277.191356, 240.5, 0.0, 0.0, 1.0] # Camera mtx format [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+    K: [277.191356, 0.0, 320.5, 0.0, 277.191356, 240.5, 0.0, 0.0, 1.0], # Camera mtx format [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+    horizontal_fov: deg(60), # in Deg
+    vertical_fov: deg(47), # in Deg
+    pitch: deg(30) # in Deg
   }
 
