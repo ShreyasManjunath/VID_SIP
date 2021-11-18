@@ -53,6 +53,8 @@ class AGPSolver
         std::vector<Vector2f> locateVerticesOnScreen(std::vector<Vector3f> vertices, Vector3f posInWorld, float yaw);
         float findAreaOfPolyOnScreen(std::vector<Vector2f>& verOnScreen);
         StateVector movePositionTowardsPolygon(StateVector& g);
+        float checkForMinimalOrientationCost(StateVector& s, std::vector<float>& orientations);
+
 
         // Static members and methods
         static Matrix3f cameraMtx;

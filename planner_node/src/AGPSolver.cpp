@@ -349,14 +349,41 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
             solFoundLocal = true;
         }
 
+        // New Addition: Solve another QP with initially obtained 'position' as component of new gradient d.
+        real_t* m_gradient = new real_t[m_variables];
+        for(int i = 0; i < m_variables; i++)
+            m_gradient[i] = 0.0;
+
+        real_t initialPos[3];
+        this->QPSolver->getPrimalSolution(initialPos);
+
+        // Creating new gradient with initialPosition
+        m_gradient[0] = -2.0 * g_const_D * initialPos[0] - 2.0 * (initialPos[0] - pw/4) - 2.0 * (initialPos[0] + pw/4);
+        m_gradient[1] = -2.0 * g_const_D * initialPos[1] - 2.0 * (initialPos[1] - pw/4) - 2.0 * (initialPos[1] + pw/4);
+        m_gradient[2] = -2.0 * g_const_D * initialPos[2] - 2.0 * (initialPos[2] - pw/4) - 2.0 * (initialPos[2] + pw/4);
+
+        real_t lb_new[3] = {lbx[0],lbx[1], lbx[2]};
+        real_t ub_new[3] = {ubx[0],ubx[1], ubx[2]};
+        for(int i = 0; i < 2; i++)
+            lb_new[i] = std::max(initialPos[i] + 1 + g_security_distance/2, lb_new[i]);
+        for(int i = 0; i < 3; i++)
+            ub_new[i] = std::max(initialPos[i] + 1 - g_security_distance/2, ub_new[i]);
+
+        // Solve new QP using QP::hotstart(params..) method
+        this->QPSolver->hotstart(m_gradient, lb_new, ub_new, poly.lbA, poly.ubA, nWSR);
+
         /* compute the constant term of the optimization objective
         g_p^k-1^T*g_p^k-1 + g_s^k-1^T*g_s^k-1 + D*g^k-1^T*g^k-1
         */
         double xxCompensate = 0.0;
 
         for(int k = 0; k < 3; k++)
-            xxCompensate += pow(g[k],2.0);
-        xxCompensate *= 4.0 + 2.0*g_const_D;
+            xxCompensate += pow(initialPos[k],2.0);
+        for(int k = 0; k < 3; k++)
+            xxCompensate += pow(initialPos[k]- pw/6,2.0);
+        for(int k = 0; k < 3; k++)
+            xxCompensate += pow(initialPos[k]+ pw/6,2.0);
+        // xxCompensate *= 4.0 + 2.0*g_const_D;
 
         real_t xOptPosition[3]; // To store the optimum position obtained by the solver.
         this->QPSolver->getPrimalSolution(xOptPosition);
@@ -365,9 +392,11 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         g[1] = xOptPosition[1];
         g[2] = xOptPosition[2];
 
-
+        
         // Find suitable orientation for the position.
         double costOrientation = this->findOrientationSolution(g, state1, state2);
+
+        ROS_INFO("ObjectVal, xxCompensate: {%f, %f}", this->QPSolver->getObjVal(), xxCompensate);
 
         if(this->QPSolver->getObjVal() + xxCompensate + costOrientation < cost && solFoundLocal)
         {
@@ -393,6 +422,7 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
 
     float maxArea = 0.0;
     bool isPosSame = false;
+    std::vector<float> validOrientations;
 
     for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step)
     {
@@ -401,14 +431,15 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
         double c = 0.9 * DBL_MAX;
 
         // Max Screen area
-        float area = 0.0;
-        std::vector<Vector2f> verticesOnScreen = locateVerticesOnScreen(this->poly.vertices, Vector3f(s[0], s[1], s[2]), (float)psi);
-        area = findAreaOfPolyOnScreen(verticesOnScreen);
+        // float area = 0.0;
+        // std::vector<Vector2f> verticesOnScreen = locateVerticesOnScreen(this->poly.vertices, Vector3f(s[0], s[1], s[2]), (float)psi);
+        // area = findAreaOfPolyOnScreen(verticesOnScreen);
         if(c <= costOrientation && this->isVisible(s) /*&& area >= maxArea*/)
         {
+            validOrientations.push_back(s[3]);
             g[3] = s[3];
             costOrientation = c; 
-            maxArea = area;
+            // maxArea = area;
             this->orientationSolutionFound = true;
         }
 
@@ -730,4 +761,34 @@ StateVector AGPSolver::movePositionTowardsPolygon(StateVector& g)
 
     return StateVector(pos[0], pos[1], pos[2], ori);
 
+}
+
+float AGPSolver::checkForMinimalOrientationCost(StateVector& s, std::vector<float>& orientations)
+{
+    Vector3f st(s[0], s[1], s[2]);
+    std::vector<float> costVector;
+    std::cout << "Orientations available: " << orientations.size() <<std::endl;
+    if(orientations.size() == 0)
+    {
+        return s[3];
+    }
+    for(auto& ori : orientations)
+    {
+        std::cout << "Ori: " << ori << std::endl;
+        float cost = 0.0;
+        for(int it = 0; it<  VID::Polygon::camBoundNormal.size(); it++) 
+        {
+            Vector3f camN = camBoundRotated( VID::Polygon::camBoundNormal[it], 0.0, ori);
+            float dotProdValue = camN.dot(poly.centroid - st);
+            std::cout << dotProdValue << std::endl;
+            cost += std::pow(dotProdValue, 2);
+        }
+        cost = cost / std::pow((int)VID::Polygon::camBoundNormal.size(), 2);
+        costVector.push_back(cost);
+        std::cout << "Ori cost: " << cost << std::endl;
+    }
+    auto min_index = std::min_element(costVector.begin(), costVector.end());
+    float optOri = orientations[min_index - orientations.begin()];
+    return optOri;
+    
 }
