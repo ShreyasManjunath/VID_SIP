@@ -56,11 +56,11 @@ void AGPSolver::initPolygon(poly_t* p)
                 poly.n.push_back(n_tmp);
             }
         }
-        ROS_INFO("Hyperplane Normals:-");
-        for(auto& n : poly.n)
-        {
-            std::cout << n.transpose() << std::endl;
-        }
+        // ROS_INFO("Hyperplane Normals:-");
+        // for(auto& n : poly.n)
+        // {
+        //     std::cout << n.transpose() << std::endl;
+        // }
     }
     else if(numOfVertices > 3)
     {
@@ -120,15 +120,15 @@ void AGPSolver::calculateQProblemParams()
     
     this->setPositionConstraints(true); // Mandatory constraint
     this->setDminDmaxConstraint(true);
-    std::cout << "A mtx:"<<std::endl;
-    for(int i = 0; i < 12; i=i+3)
-    {
-        ROS_INFO("%f, %f, %f", poly.A[i],poly.A[i+1], poly.A[i+2]);
-    }
-    std::cout << "lowerBound mtx:"<<std::endl;
-    ROS_INFO("%f, %f, %f, %f", poly.lbA[0],poly.lbA[1], poly.lbA[2], poly.lbA[3]);
-    std::cout << "upperbound dmax:"<<std::endl;
-    ROS_INFO("%f", poly.ubA[3]);
+    // std::cout << "A mtx:"<<std::endl;
+    // for(int i = 0; i < 12; i=i+3)
+    // {
+    //     ROS_INFO("%f, %f, %f", poly.A[i],poly.A[i+1], poly.A[i+2]);
+    // }
+    // std::cout << "lowerBound mtx:"<<std::endl;
+    // ROS_INFO("%f, %f, %f, %f", poly.lbA[0],poly.lbA[1], poly.lbA[2], poly.lbA[3]);
+    // std::cout << "upperbound dmax:"<<std::endl;
+    // ROS_INFO("%f", poly.ubA[3]);
 
 
     Options options;
@@ -231,7 +231,7 @@ void AGPSolver::setFOVConstraints(int pw, bool flag)
         }
     }
 
-    ROS_INFO("low: %f, %f, %f", low[0],low[1], low[2]); ROS_INFO("high: %f, %f, %f", high[0],high[1], high[2]);
+    // ROS_INFO("low: %f, %f, %f", low[0],low[1], low[2]); ROS_INFO("high: %f, %f, %f", high[0],high[1], high[2]);
     
 
     int j = currentIndexOfBoundMatrices;
@@ -322,7 +322,7 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         g << poly.centroid[0] + DD * poly.aabs[0],
              poly.centroid[1] + DD * poly.aabs[1],
              poly.centroid[2] + DD * poly.aabs[2], 0.0;
-        ROS_INFO("g: {x, y, z} = {%f, %f, %f}", g[0], g[1],g[2]);
+        // ROS_INFO("g: {x, y, z} = {%f, %f, %f}", g[0], g[1],g[2]);
         static real_t lbx[3] = { X_MIN, Y_MIN, Z_MIN };
         static real_t ubx[3] = { X_MAX, Y_MAX, Z_MAX };
         int nWSR = 100;
@@ -338,7 +338,7 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         poly.d[1] = -(4.0 + 2.0*g_const_D) * g[1];
         poly.d[2] = -(4.0 + 2.0*g_const_D) * g[2];
 
-        ROS_INFO("gradient d: {x, y, z} = {%f, %f, %f}", poly.d[0], poly.d[1],poly.d[2]);
+        // ROS_INFO("gradient d: {x, y, z} = {%f, %f, %f}", poly.d[0], poly.d[1],poly.d[2]);
         if(SUCCESSFUL_RETURN != (re = this->QPSolver->init(poly.H, poly.d, poly.A, lbx, ubx, poly.lbA, poly.ubA, nWSR)))
         {
             // ROS_INFO("Return Value: %d", re);
@@ -392,11 +392,11 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         g[1] = xOptPosition[1];
         g[2] = xOptPosition[2];
 
-        
+
         // Find suitable orientation for the position.
         double costOrientation = this->findOrientationSolution(g, state1, state2);
 
-        ROS_INFO("ObjectVal, xxCompensate: {%f, %f}", this->QPSolver->getObjVal(), xxCompensate);
+        // ROS_INFO("ObjectVal, xxCompensate: {%f, %f}", this->QPSolver->getObjVal(), xxCompensate);
 
         if(this->QPSolver->getObjVal() + xxCompensate + costOrientation < cost && solFoundLocal)
         {
@@ -407,6 +407,16 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
 
 
     }
+    // if(best[0] == 0.0 && best[1] == 0.0 && best[2] == 0.0 && best[3] == 0.0)
+    // {
+    //     best[0] = poly.centroid[0] + DD * poly.aabs[0] + g_security_distance;
+    //     best[1] = poly.centroid[1] + DD * poly.aabs[1];
+    //     best[2] = poly.centroid[2] + DD * poly.aabs[2] + g_security_distance;
+    //     auto distVec = poly.centroid - Vector3f(best[0], best[1], best[2]);
+    //     float angle = std::acos(distVec.dot(poly.aabs) / (distVec.norm() * poly.aabs.norm()));
+    //     best[3] = angle;
+    //     this->orientationSolutionFound = true;
+    // }
 
     return std::make_tuple(best, obsCount);
 
@@ -424,7 +434,7 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
     bool isPosSame = false;
     std::vector<float> validOrientations;
 
-    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step)
+    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step -0.1)
     {
         StateVector s = g;
         s[3] = psi;
@@ -613,9 +623,9 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
     for(int i = 0; i < 4; i++)
         assert(best[i] < 1e15 && best[i] > -1e15);
 
-    ROS_INFO("Triangle :\nv1 = {%f, %f, %f}\n v2= {%f, %f, %f} \n v3 = {%f, %f, %f}", poly.vertices[0][0], poly.vertices[0][1],poly.vertices[0][2],
-    poly.vertices[1][0], poly.vertices[1][1],poly.vertices[1][2], poly.vertices[2][0], poly.vertices[2][1],poly.vertices[2][2]);
-    ROS_INFO("Incidence angle: %f", poly.incidenceAngle);
+    // ROS_INFO("Triangle :\nv1 = {%f, %f, %f}\n v2= {%f, %f, %f} \n v3 = {%f, %f, %f}", poly.vertices[0][0], poly.vertices[0][1],poly.vertices[0][2],
+    // poly.vertices[1][0], poly.vertices[1][1],poly.vertices[1][2], poly.vertices[2][0], poly.vertices[2][1],poly.vertices[2][2]);
+    // ROS_INFO("Incidence angle: %f", poly.incidenceAngle);
     ROS_INFO("Centroid: {x, y, z} = {%f, %f, %f}", poly.centroid[0], poly.centroid[1],poly.centroid[2]);
     ROS_INFO("Sampled VP: {x, y, z, yaw} = {%f, %f, %f, %f}", best[0], best[1],best[2], best[3]);
     return best;
