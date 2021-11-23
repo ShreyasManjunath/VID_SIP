@@ -407,16 +407,32 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
 
 
     }
-    // if(best[0] == 0.0 && best[1] == 0.0 && best[2] == 0.0 && best[3] == 0.0)
-    // {
-    //     best[0] = poly.centroid[0] + DD * poly.aabs[0] + g_security_distance;
-    //     best[1] = poly.centroid[1] + DD * poly.aabs[1];
-    //     best[2] = poly.centroid[2] + DD * poly.aabs[2] + g_security_distance;
-    //     auto distVec = poly.centroid - Vector3f(best[0], best[1], best[2]);
-    //     float angle = std::acos(distVec.dot(poly.aabs) / (distVec.norm() * poly.aabs.norm()));
-    //     best[3] = angle;
-    //     this->orientationSolutionFound = true;
-    // }
+    std::vector<Vector3f> tempVec;
+    tempVec.push_back(poly.centroid);
+    auto onScreenVec = locateVerticesOnScreen(tempVec, Vector3f(best[0], best[1], best[2]), best[3]);
+    std::cout << "OnScreen: " << onScreenVec[0].transpose() << std::endl;
+    if(onScreenVec[0][0] < 360.5 && best[3] < 0.0)
+    {
+        best[3] += 0.05;
+    }
+    else if(onScreenVec[0][0] < 360.5  && best[3] >= 0.0)
+    {
+        best[3] += -0.05;
+    }
+    else if(onScreenVec[0][0] > 360.5  && best[3] < 0.0)
+    {
+        best[3] += -0.05;
+    }
+    else if(onScreenVec[0][0] > 360.5  && best[3] >= 0.0)
+    {
+        best[3] += 0.05;
+    }
+
+    Vector3f distVec =  poly.centroid - Vector3f(best[0], best[1], best[2]); 
+    Vector3f distVecNorm = distVec / distVec.norm();
+    best[0] += distVecNorm[0] * 0.6;
+    best[1] += distVecNorm[1] * 0.6;
+    best[2] += distVecNorm[2] * 1.0;
 
     return std::make_tuple(best, obsCount);
 
@@ -434,7 +450,7 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
     bool isPosSame = false;
     std::vector<float> validOrientations;
 
-    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step -0.1)
+    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step - 0.1)
     {
         StateVector s = g;
         s[3] = psi;
@@ -657,7 +673,7 @@ std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(std::vector<Vector3f> ve
     AngleAxis pitchAngle_y((float)0.0, Vector3f::UnitY());
     AngleAxis yawAngle_y((float)yaw, Vector3f::UnitZ());
     Quaternion<float> q_yaw = rollAngle_y * pitchAngle_y * yawAngle_y;
-    Matrix3f R_yaw = q_yaw.matrix();
+    Matrix3f R_yaw = q_yaw.matrix().transpose();
 
     // Pitch rot matrix
     AngleAxis rollAngle_p((float)0.0, Vector3f::UnitZ());
@@ -667,12 +683,9 @@ std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(std::vector<Vector3f> ve
     Matrix3f R_pitch = q_pitch.matrix();
 
     auto neg_Rt = -R * posInWorld;
-    auto R_prime = R_pitch * R_w2c * R_yaw;
+    auto R_prime = R_w2c * R_yaw;
 
     auto t = R_prime * neg_Rt;
-
-    // std::cout << t.transpose() << std::endl;
-
 
     Matrix3f R_final = R_prime * R;
     Matrix4f T_w2c;
@@ -687,13 +700,18 @@ std::vector<Vector2f> AGPSolver::locateVerticesOnScreen(std::vector<Vector3f> ve
         Vector4f vertexHomogenous(v[0], v[1], v[2], 1);
         Vector4f vertexInCC = T_w2c * vertexHomogenous;
         verticesInCC.push_back(Vector3f(vertexInCC[0], vertexInCC[1], vertexInCC[2]));
-        // std::cout << "VertexInCC: " << vertexInCC.transpose() << std::endl;
+        std::cout << "VertexInCC: " << vertexInCC.transpose() << std::endl;
+    }
+
+    for(auto& v : verticesInCC)
+    {
+        v = R_pitch * v;
     }
 
     std::vector<Vector2f> verticesOnScreen;
     for(auto& ver : verticesInCC)
     {
-        Vector3f vertexOnScreen = cameraMtx * ver;
+        Vector3f vertexOnScreen =  cameraMtx * ver;
         float Zc = vertexOnScreen[2];
         float u = vertexOnScreen[0] / Zc;
         float v = vertexOnScreen[1] / Zc;

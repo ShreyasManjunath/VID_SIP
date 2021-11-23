@@ -1,12 +1,12 @@
 #Names of stl file
 mesh_file_name: "robdekon.stl" # file should be present in request_client_node/meshes directory
-debug_mode: true # Change to true or false accordingly
+debug_mode: false # Change to true or false accordingly
 
 #planner parameters
 planner:
   {
     minIncidenceAngle: deg(10.0), # in Degrees
-    dmin: 3.0,
+    dmin: 5.0,
     dmax: 8.0
   }
 
