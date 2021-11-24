@@ -134,6 +134,7 @@ add_library(
   src/State.cpp
   src/TSP.cpp
   src/Planner.cpp
+  src/PreProcess.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}
