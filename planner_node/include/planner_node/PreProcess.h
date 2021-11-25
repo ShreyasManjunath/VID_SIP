@@ -24,7 +24,15 @@ class PreProcess
         std::vector<geometry_msgs::Polygon> testArea;
         std::vector<ShapeData> initializedTriangles;
         std::vector<geometry_msgs::Polygon> grownArea;
-        const float areaThreshold = 6.0;
+        const volatile float areaThreshold = 6.0;
+        int triOfIntrst = 0;
+
+    private:
+    // Methods
+    std::vector<Vector3f> convertMsg2Eigen(geometry_msgs::Polygon t);
+    std::vector<Vector3f> setIntersection(std::vector<Vector3f>& A, std::vector<Vector3f>& B);
+    std::vector<Vector3f> getUniqueVertices(std::vector<std::vector<Vector3f>>& trianglesToFuse);
+    
     public:
         PreProcess();
         ~PreProcess();
@@ -33,7 +41,9 @@ class PreProcess
         std::tuple<float, Vector3f> getArea(geometry_msgs::Polygon& shape);
         void initializeTrinagles();
         void process();
-        
+        std::vector<std::vector<Vector3f>> searchForNeighbors(ShapeData& t);
+        void setTriOfInterest(int N);
+        void setThreshArea(float area) const;
         
         
 };

@@ -146,6 +146,11 @@ add_executable(plan
  src/plan.cpp
 )
 
+add_executable(test_preprocess
+src/test.cpp
+src/PreProcess.cpp
+)
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -162,5 +167,9 @@ target_link_libraries(plan
    ${optec_LIBRARIES}
    ${PROJECT_NAME}
    ortools::ortools
+)
+
+target_link_libraries(test_preprocess
+   ${catkin_LIBRARIES}
 )
 
