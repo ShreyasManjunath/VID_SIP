@@ -32,6 +32,8 @@ class PreProcess
     std::vector<Vector3f> convertMsg2Eigen(geometry_msgs::Polygon t);
     std::vector<Vector3f> setIntersection(std::vector<Vector3f>& A, std::vector<Vector3f>& B);
     std::vector<Vector3f> getUniqueVertices(std::vector<std::vector<Vector3f>>& trianglesToFuse);
+    Vector2f project3Dto2D(Vector3f& point, Vector3f& origin, Vector3f& n);
+    std::vector<size_t> sortIndexes(const std::vector<float>& v);
     
     public:
         PreProcess();
@@ -41,9 +43,10 @@ class PreProcess
         std::tuple<float, Vector3f> getArea(geometry_msgs::Polygon& shape);
         void initializeTrinagles();
         void process();
-        std::vector<std::vector<Vector3f>> searchForNeighbors(ShapeData& t);
+        std::tuple<std::vector<std::vector<Vector3f>>, Vector3f> searchForNeighbors(ShapeData& t);
         void setTriOfInterest(int N);
         void setThreshArea(float area) const;
+        std::vector<Vector3f> joinVerticesInAntiClock(std::vector<Vector3f>& vertices, Vector3f n);
         
         
 };

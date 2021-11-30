@@ -14,6 +14,8 @@ int main(int argc, char **argv)
 
     geometry_msgs::Polygon P;
     geometry_msgs::Point32 p32;
+
+    //  First set of triangles
     p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
     p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
     p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
@@ -41,6 +43,20 @@ int main(int argc, char **argv)
     p32.x = 24.5; p32.y = 6; p32.z = 4.5; P.points.push_back(p32);
     p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
     p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    processObject.addTriangle(P);
+    P.points.clear();
+
+    //  Second set of triangles
+
+    p32.x = 15.5; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 20; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 20; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    processObject.addTriangle(P);
+    P.points.clear();
+
+    p32.x = 15.5; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 20; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    p32.x = 15.5; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
     processObject.addTriangle(P);
     P.points.clear();
 

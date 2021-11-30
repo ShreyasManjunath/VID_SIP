@@ -1,6 +1,7 @@
 #include "planner_node/PreProcess.h"
 #include <algorithm>
 #include <iterator>
+#include <numeric>
 
 PreProcess::PreProcess()
 {
@@ -60,7 +61,7 @@ void PreProcess::process()
     initializeTrinagles();
     auto triangleOfInterest = initializedTriangles[triOfIntrst];
 
-    auto trianglesToFuse = searchForNeighbors(triangleOfInterest);
+    auto [trianglesToFuse, normal] = searchForNeighbors(triangleOfInterest);
     for(auto& t : trianglesToFuse)
     {
         std::cout << "Triangle:" << std::endl;
@@ -75,16 +76,24 @@ void PreProcess::process()
     {
         std::cout << v.transpose() << std::endl;
     }
+
+    auto joinedVertices = joinVerticesInAntiClock(allVertices, normal);
+
+    std::cout << "Joined Vertices in anti-clock: " << std::endl;
+    for(auto& v : joinedVertices)
+    {
+        std::cout << v.transpose() << std::endl;
+    }
     
 }
 
-std::vector<std::vector<Vector3f>> PreProcess::searchForNeighbors(ShapeData& t)
+std::tuple<std::vector<std::vector<Vector3f>>, Vector3f> PreProcess::searchForNeighbors(ShapeData& t)
 {
-    std::vector<std::vector<Vector3f>> tringlesToFuse;
+    std::vector<std::vector<Vector3f>> trianglesToFuse;
     float totalArea = 0.0;
     totalArea += t.area;
     auto mainTri = convertMsg2Eigen(t.shape); 
-    tringlesToFuse.push_back(mainTri);
+    trianglesToFuse.push_back(mainTri);
     for(auto& tri : initializedTriangles)
     {
         std::vector<Vector3f> commonVertices;
@@ -103,13 +112,13 @@ std::vector<std::vector<Vector3f>> PreProcess::searchForNeighbors(ShapeData& t)
                 else
                 {
                     totalArea += tri.area;
-                    tringlesToFuse.push_back(tempTri);
+                    trianglesToFuse.push_back(tempTri);
                 }
             }
         }
     }
     std::cout << "Total Area : " << totalArea << std::endl;
-    return tringlesToFuse;
+    return std::make_tuple(trianglesToFuse, t.areaNormal);
 }
 
 std::vector<Vector3f> PreProcess::convertMsg2Eigen(geometry_msgs::Polygon t)
@@ -169,4 +178,72 @@ std::vector<Vector3f> PreProcess::getUniqueVertices(std::vector<std::vector<Vect
     }
 
     return retVec;
+}
+
+Vector2f PreProcess::project3Dto2D(Vector3f& point, Vector3f& origin, Vector3f& n)
+{
+    Vector3f distVec = point - origin;
+    Vector3f projection = distVec - (distVec.dot(n)) * n;
+    // setting XY-Plane as the reference 2D plane
+    Vector3f xAxis(-n[1], n[0], n[2]);
+    Vector3f yAxis = n.cross(xAxis);
+    Vector2f pointIn2D(projection.dot(xAxis), projection.dot(yAxis));
+    return pointIn2D;
+}
+
+std::vector<Vector3f> PreProcess::joinVerticesInAntiClock(std::vector<Vector3f>& vertices, Vector3f n)
+{
+    std::vector<Vector2f> verticesIn2D;
+    std::vector<float> angles;
+    Vector3f origin(0.0, 0.0, 0.0);
+    //  Making centroid of the polygon as origin.
+    for(auto& v : vertices)
+    {
+        origin += v;
+    }
+    origin /= vertices.size();
+
+    for(int i = 0; i < vertices.size(); i++)
+    {   
+        Vector2f temp2DPoint = project3Dto2D(vertices[i], origin, n);
+        verticesIn2D.push_back(temp2DPoint);
+    }
+
+    auto originIn2D = project3Dto2D(origin, origin, n);
+    std::cout << "Origin (centroid) in 2D: " << originIn2D.transpose() << std::endl;
+    std::cout << "Vertices in 2D: " << std::endl;
+    for(auto& v : verticesIn2D)
+    {
+        std::cout << v.transpose() << std::endl;
+        float tempAngle = std::atan2(v[1] - originIn2D[1], v[0] - originIn2D[0]);
+        angles.push_back(tempAngle);
+    }
+
+    std::cout << "Angles with centroid reference: " << std::endl;
+    for(auto& v : angles)
+    {
+        std::cout << v << std::endl;
+    }
+
+    std::vector<Vector3f> verticesInAntiClock;
+    std::cout  << "Index order: [";
+    for(auto i : sortIndexes(angles))
+    {
+        std::cout << i + 1 << " ";
+        verticesInAntiClock.push_back(vertices[i]);
+    }
+    std::cout << "]" << std::endl;
+
+    return verticesInAntiClock;
+    
+}
+
+std::vector<size_t> PreProcess::sortIndexes(const std::vector<float>& v)
+{
+    std::vector<size_t> idx(v.size());
+    std::iota(idx.begin(), idx.end(), 0);
+
+    std::stable_sort(idx.begin(), idx.end(), [&v](size_t i1, size_t i2) { return v[i1] < v[i2];});
+
+    return idx;
 }
