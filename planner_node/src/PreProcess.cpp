@@ -185,7 +185,7 @@ Vector2f PreProcess::project3Dto2D(Vector3f& point, Vector3f& origin, Vector3f& 
     Vector3f distVec = point - origin;
     Vector3f projection = distVec - (distVec.dot(n)) * n;
     // setting XY-Plane as the reference 2D plane
-    Vector3f xAxis(-n[1], n[0], n[2]);
+    Vector3f xAxis(n[1], -n[0], n[2]);
     Vector3f yAxis = n.cross(xAxis);
     Vector2f pointIn2D(projection.dot(xAxis), projection.dot(yAxis));
     return pointIn2D;
