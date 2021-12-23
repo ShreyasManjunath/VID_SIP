@@ -10,8 +10,13 @@ extern int g_convex_pieces;
 extern double g_angular_discretization_step;
 extern koptError_t koptError;
 extern double g_security_distance;
+extern std::vector<float> starting_position;
+extern std::vector<float> starting_rotation;
+extern void publishRejectedTriangles(Vector3f& v1, Vector3f& v2, Vector3f& v3);
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
+
+int AGPSolver::total_rejected_triangle_count = 0;
 
 AGPSolver::AGPSolver(poly_t* p, int variables, int constraints)
 :m_variables{variables}, m_constraints{constraints}, poly{*p}
@@ -143,8 +148,8 @@ void AGPSolver::setDminDmaxConstraint(bool flag)
 
     int j = currentIndexOfBoundMatrices;
     // lba and uba
-    poly.lbA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.minDist); 
-    poly.ubA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.maxDist);
+    poly.lbA[j] = poly.aabs.dot(poly.vertices[0]+ poly.aabs * poly.minDist); 
+    poly.ubA[j] = poly.aabs.dot(poly.vertices[0]+ poly.aabs * poly.maxDist);
     currentIndexOfAMatrix = currentIndexOfAMatrix + 3;
     currentIndexOfBoundMatrices = currentIndexOfBoundMatrices + 1;
 }
@@ -303,6 +308,9 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
     for(int i = 0; i < DIMENSIONALITY; i++){
         best[i] = 0;
     }
+    // New addition to adjust the rejected triangles - If rejected, starting pose is assigned.
+    best[0] = starting_position[0]; best[1] = starting_position[1]; 
+    best[2] = starting_position[2]; best[3] = starting_rotation[2];
 
     double angleLower = g_camPitch + g_camAngleVertical/2.0;
     double angleUpper = g_camPitch - g_camAngleVertical/2.0;
@@ -357,40 +365,47 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
         real_t initialPos[3];
         this->QPSolver->getPrimalSolution(initialPos);
 
-        // Creating new gradient with initialPosition
-        m_gradient[0] = -2.0 * g_const_D * initialPos[0] - 2.0 * (initialPos[0] - pw/4) - 2.0 * (initialPos[0] + pw/4);
-        m_gradient[1] = -2.0 * g_const_D * initialPos[1] - 2.0 * (initialPos[1] - pw/4) - 2.0 * (initialPos[1] + pw/4);
-        m_gradient[2] = -2.0 * g_const_D * initialPos[2] - 2.0 * (initialPos[2] - pw/4) - 2.0 * (initialPos[2] + pw/4);
+        // // Creating new gradient with initialPosition
+        // m_gradient[0] = -2.0 * g_const_D * initialPos[0] - 2.0 * (initialPos[0] - pw/4) - 2.0 * (initialPos[0] + pw/4);
+        // m_gradient[1] = -2.0 * g_const_D * initialPos[1] - 2.0 * (initialPos[1] - pw/4) - 2.0 * (initialPos[1] + pw/4);
+        // m_gradient[2] = -2.0 * g_const_D * initialPos[2] - 2.0 * (initialPos[2] - pw/4) - 2.0 * (initialPos[2] + pw/4);
 
-        real_t lb_new[3] = {lbx[0],lbx[1], lbx[2]};
-        real_t ub_new[3] = {ubx[0],ubx[1], ubx[2]};
-        for(int i = 0; i < 2; i++)
-            lb_new[i] = std::max(initialPos[i] + 1 + g_security_distance/2, lb_new[i]);
-        for(int i = 0; i < 3; i++)
-            ub_new[i] = std::max(initialPos[i] + 1 - g_security_distance/2, ub_new[i]);
+        // real_t lb_new[3] = {lbx[0],lbx[1], lbx[2]};
+        // real_t ub_new[3] = {ubx[0],ubx[1], ubx[2]};
+        // for(int i = 0; i < 2; i++)
+        //     lb_new[i] = std::max(initialPos[i] + 1 + g_security_distance/2, lb_new[i]);
+        // for(int i = 0; i < 3; i++)
+        //     ub_new[i] = std::max(initialPos[i] + 1 - g_security_distance/2, ub_new[i]);
 
-        // Solve new QP using QP::hotstart(params..) method
-        this->QPSolver->hotstart(m_gradient, lb_new, ub_new, poly.lbA, poly.ubA, nWSR);
+        // // Solve new QP using QP::hotstart(params..) method
+        // this->QPSolver->hotstart(m_gradient, lb_new, ub_new, poly.lbA, poly.ubA, nWSR);
 
-        /* compute the constant term of the optimization objective
-        g_p^k-1^T*g_p^k-1 + g_s^k-1^T*g_s^k-1 + D*g^k-1^T*g^k-1
-        */
-        double xxCompensate = 0.0;
+        // /* compute the constant term of the optimization objective
+        // g_p^k-1^T*g_p^k-1 + g_s^k-1^T*g_s^k-1 + D*g^k-1^T*g^k-1
+        // */
+        // double xxCompensate = 0.0;
 
-        for(int k = 0; k < 3; k++)
-            xxCompensate += pow(initialPos[k],2.0);
-        for(int k = 0; k < 3; k++)
-            xxCompensate += pow(initialPos[k]- pw/6,2.0);
-        for(int k = 0; k < 3; k++)
-            xxCompensate += pow(initialPos[k]+ pw/6,2.0);
+        // for(int k = 0; k < 3; k++)
+        //     xxCompensate += pow(initialPos[k],2.0);
+        // for(int k = 0; k < 3; k++)
+        //     xxCompensate += pow(initialPos[k]- pw/24,2.0);
+        // for(int k = 0; k < 3; k++)
+        //     xxCompensate += pow(initialPos[k]+ pw/24,2.0);
         // xxCompensate *= 4.0 + 2.0*g_const_D;
 
-        real_t xOptPosition[3]; // To store the optimum position obtained by the solver.
-        this->QPSolver->getPrimalSolution(xOptPosition);
+        // real_t xOptPosition[3]; // To store the optimum position obtained by the solver.
+        // this->QPSolver->getPrimalSolution(xOptPosition);
 
-        g[0] = xOptPosition[0];
-        g[1] = xOptPosition[1];
-        g[2] = xOptPosition[2];
+        // g[0] = xOptPosition[0];
+        // g[1] = xOptPosition[1];
+        // g[2] = xOptPosition[2];
+
+        double xxCompensate = 0.0;
+        g[0] = initialPos[0]; g[1] = initialPos[1]; g[2] = initialPos[2];
+
+        for(int k = 0; k<3; k++)
+            xxCompensate += pow(g[k],2.0);
+        xxCompensate *= 4.0 + 2.0*g_const_D;
 
 
         // Find suitable orientation for the position.
@@ -407,32 +422,32 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
 
 
     }
-    std::vector<Vector3f> tempVec;
-    tempVec.push_back(poly.centroid);
-    auto onScreenVec = locateVerticesOnScreen(tempVec, Vector3f(best[0], best[1], best[2]), best[3]);
-    std::cout << "OnScreen: " << onScreenVec[0].transpose() << std::endl;
-    if(onScreenVec[0][0] < 360.5 && best[3] < 0.0)
-    {
-        best[3] += 0.05;
-    }
-    else if(onScreenVec[0][0] < 360.5  && best[3] >= 0.0)
-    {
-        best[3] += -0.05;
-    }
-    else if(onScreenVec[0][0] > 360.5  && best[3] < 0.0)
-    {
-        best[3] += -0.05;
-    }
-    else if(onScreenVec[0][0] > 360.5  && best[3] >= 0.0)
-    {
-        best[3] += 0.05;
-    }
+    // std::vector<Vector3f> tempVec;
+    // tempVec.push_back(poly.centroid);
+    // auto onScreenVec = locateVerticesOnScreen(tempVec, Vector3f(best[0], best[1], best[2]), best[3]);
+    // std::cout << "OnScreen: " << onScreenVec[0].transpose() << std::endl;
+    // if(onScreenVec[0][0] < 360.5 && best[3] < 0.0)
+    // {
+    //     best[3] += 0.05;
+    // }
+    // else if(onScreenVec[0][0] < 360.5  && best[3] >= 0.0)
+    // {
+    //     best[3] += -0.05;
+    // }
+    // else if(onScreenVec[0][0] > 360.5  && best[3] < 0.0)
+    // {
+    //     best[3] += -0.05;
+    // }
+    // else if(onScreenVec[0][0] > 360.5  && best[3] >= 0.0)
+    // {
+    //     best[3] += 0.05;
+    // }
 
-    Vector3f distVec =  poly.centroid - Vector3f(best[0], best[1], best[2]); 
-    Vector3f distVecNorm = distVec / distVec.norm();
-    best[0] += distVecNorm[0] * 0.6;
-    best[1] += distVecNorm[1] * 0.6;
-    best[2] += distVecNorm[2] * 1.0;
+    // Vector3f distVec =  poly.centroid - Vector3f(best[0], best[1], best[2]); 
+    // Vector3f distVecNorm = distVec / distVec.norm();
+    // best[0] += distVecNorm[0] * 0.6;
+    // best[1] += distVecNorm[1] * 0.6;
+    // best[2] += distVecNorm[2] * 1.0;
 
     return std::make_tuple(best, obsCount);
 
@@ -450,7 +465,7 @@ double AGPSolver::findOrientationSolution(StateVector& g, StateVector* state1, S
     bool isPosSame = false;
     std::vector<float> validOrientations;
 
-    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step - 0.1)
+    for(double psi = -M_PI; psi < M_PI; psi += g_angular_discretization_step)
     {
         StateVector s = g;
         s[3] = psi;
@@ -500,9 +515,9 @@ bool AGPSolver::isVisible(StateVector s)
 {
     Vector3f st(s[0], s[1], s[2]);
     auto vertices = poly.getVertices();
-    if(poly.aabs.dot(st-poly.centroid-poly.aabs*poly.minDist)<0)
+    if(poly.aabs.dot(st-poly.vertices[0]-poly.aabs*poly.minDist)<0)
         return false;
-    if(poly.aabs.dot(st-poly.centroid-poly.aabs*poly.maxDist)>0)
+    if(poly.aabs.dot(st-poly.vertices[0]-poly.aabs*poly.maxDist)>0)
         return false;
 
     // if((st - vertices[0]).dot(poly.n[0]) < 0)
@@ -586,24 +601,27 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
     std::tie(best, obsCount) = this->findViewPointSolution(state1, state2, statePrev);
     if(obsCount >= g_convex_pieces)
     {
+        AGPSolver::total_rejected_triangle_count += 1;
         std::string pkgPath = ros::package::getPath("planner_node");
         std::fstream plannerLog;
         plannerLog.open((pkgPath+"/data/report.log").c_str(), std::ios::app | std::ios::out);
         if(!plannerLog.is_open())
         ROS_ERROR("Could not open report.log");
         plannerLog << "-->Too may obstacles in the dual sampling space!\n";
+        int n = poly.getnumOfVertices();
         for(int i = 0; i < poly.getnumOfVertices(); i++)
         {
             plannerLog << "   x" << i+1 << ": (" << poly.vertices[i][0] << ", " << poly.vertices[i][1] 
                         << ", " << poly.vertices[i][2] << ")\n";
         }
         plannerLog.close();
+        if(n == 3);
+            publishRejectedTriangles(poly.vertices[0],poly.vertices[1],poly.vertices[2]);
         koptError = OBSTACLE_INFEASIBILITY;
     }
 
     if(!solutionFound)
     {
-
         std::string pkgPath = ros::package::getPath("planner_node");
         std::fstream plannerLog;
         plannerLog.open((pkgPath+"/data/report.log").c_str(), std::ios::app | std::ios::out);
@@ -616,12 +634,14 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
                         << ", " << poly.vertices[i][2] << ")\n";
         }
         plannerLog.close();
+        int n = poly.getnumOfVertices();
+        if(n == 3);
+            publishRejectedTriangles(poly.vertices[0],poly.vertices[1],poly.vertices[2]);
         koptError = VIEWPOINT_INFEASIBILITY;
     }
 
     if(!orientationSolutionFound)
     {
-      
         std::string pkgPath = ros::package::getPath("planner_node");
         std::fstream plannerLog;
         plannerLog.open((pkgPath+"/data/report.log").c_str(), std::ios::app | std::ios::out);
@@ -634,8 +654,14 @@ StateVector AGPSolver::dualBarrierSamplerFresh(StateVector* state1, StateVector*
                         << ", " << poly.vertices[i][2] << ")\n";
         }
         plannerLog.close();
+        int n = poly.getnumOfVertices();
+        if(n == 3);
+            publishRejectedTriangles(poly.vertices[0],poly.vertices[1],poly.vertices[2]);
         koptError = VIEWPOINT_INFEASIBILITY;      
     }
+
+    if(!solutionFound || !orientationSolutionFound)
+        AGPSolver::total_rejected_triangle_count += 1;
     for(int i = 0; i < 4; i++)
         assert(best[i] < 1e15 && best[i] > -1e15);
 

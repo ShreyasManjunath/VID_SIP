@@ -1,12 +1,12 @@
 #Names of stl file
-mesh_file_name: "robdekon.stl" # file should be present in request_client_node/meshes directory
+mesh_file_name: "house_100_withBaseTriangles.stl" # file should be present in request_client_node/meshes directory
 debug_mode: false # Change to true or false accordingly
 
 #planner parameters
 planner:
   {
     minIncidenceAngle: deg(10.0), # in Degrees
-    dmin: 5.0,
+    dmin: 3.0,
     dmax: 8.0
   }
 
@@ -21,14 +21,14 @@ rotorcraft:
 #Total cuboidal space available for flying
 space_boundary:
   {
-    space_size: [200.0, 200.0, 50.0], #in meters
-    space_center: [0.0, 0.0, 0.0]
+    space_size: [30.0, 30.0, 30.0], #in meters
+    space_center: [2.0, 2.0, 22.0]
   }
 
 #Starting Pose
 starting_pose:
   {
-    position_xyz: [0.0, 0.0, 4.0], #in meters
+    position_xyz: [7.0, 7.0, 4.0], #in meters
     rotation_rpy: [0.0, 0.0, 0.0] #in degrees
   }
 
@@ -45,6 +45,6 @@ camera:
     K: [277.191356, 0.0, 320.5, 0.0, 277.191356, 240.5, 0.0, 0.0, 1.0], # Camera mtx format [fx, 0, cx, 0, fy, cy, 0, 0, 1]
     horizontal_fov: deg(60), # in Deg
     vertical_fov: deg(47), # in Deg
-    pitch: deg(30) # in Deg
+    pitch: deg(20) # in Deg
   }
 

@@ -60,6 +60,7 @@ class AGPSolver
         static Matrix3f cameraMtx;
 
         static void setCameraMtx(std::string node);
+        static int total_rejected_triangle_count;
 };
 
 

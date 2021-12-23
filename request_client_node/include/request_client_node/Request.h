@@ -17,6 +17,7 @@ namespace VID
             ros::ServiceClient requestClient;
             ros::NodeHandle nh;
             std::vector<nav_msgs::Path>* mesh;
+            ros::Publisher stl_pub;
         public:
             Request();
             ~Request();
