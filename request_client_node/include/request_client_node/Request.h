@@ -18,6 +18,7 @@ namespace VID
             ros::NodeHandle nh;
             std::vector<nav_msgs::Path>* mesh;
             ros::Publisher stl_pub;
+            bool DEBUG_MODE;
         public:
             Request();
             ~Request();

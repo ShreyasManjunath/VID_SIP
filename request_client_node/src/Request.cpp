@@ -7,6 +7,9 @@ VID::Request::Request()
 {
     this->requestClient = nh.serviceClient<planner_node::inspection>("inspectionPath");
     this->stl_pub = nh.advertise<nav_msgs::Path>("stl_mesh", 1);
+    bool m_DEBUG_MODE = false;
+    ros::param::get("/VID_SIP_Planner_Node/debug_mode", m_DEBUG_MODE);
+    this->DEBUG_MODE = m_DEBUG_MODE;
 }
 
 VID::Request::~Request()
@@ -203,7 +206,8 @@ std::vector<nav_msgs::Path>* VID::Request::readSTLfile(std::string filename)
         p.header.stamp = ros::Time::now();
         p.header.seq = k++;
         mesh->push_back(p);
-        stl_pub.publish(p);
+        if(!this->DEBUG_MODE)
+            stl_pub.publish(p);
         ros::Duration(0.01).sleep();
     }
     free(line);

@@ -261,22 +261,22 @@ int main(int argc, char **argv) {
     computed_trajectory_posearray_pub = n.advertise<geometry_msgs::PoseArray>("/computed_trajectory_posearray", 1);
     rejected_triangle_pub = n.advertise<nav_msgs::Path>("rejected_triangles", 1);
     ros::Duration(3).sleep();
-    // geometry_msgs::Polygon P;
-    // geometry_msgs::Point32 p32;
-    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
+    geometry_msgs::Polygon P;
+    geometry_msgs::Point32 p32;
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
     // P.points.clear();
     // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
     // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
     // P.points.clear();
     // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
     // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
@@ -316,13 +316,13 @@ int main(int argc, char **argv) {
     // inspectionArea.push_back(P);
 
     // Polygon testing
-    geometry_msgs::Polygon P;
-    geometry_msgs::Point32 p32;
-    p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.500000; P.points.push_back(p32);
-    p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
-    p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
-    p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.250000; P.points.push_back(p32);
-    inspectionArea.push_back(P);
+    // geometry_msgs::Polygon P;
+    // geometry_msgs::Point32 p32;
+    // p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.500000; P.points.push_back(p32);
+    // p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
+    // p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
+    // p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.250000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
     
     // P.points.clear();
     // p32.x =4.187500; p32.y = 3.271069; p32.z = 1.000000; P.points.push_back(p32);
