@@ -62,6 +62,8 @@ namespace VID
             void setnumOfVertices(int n);
             std::vector<Vector3f> getVertices() const;
             VID::region* IsPolyInCollision(StateVector& stateIn);
+            static Vector3f findPolyAreaVector(std::vector<Vector3f> v);
+            static Vector3f findUnitNormal(std::vector<Vector3f> v);
 
     };
 

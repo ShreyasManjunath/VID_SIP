@@ -70,6 +70,10 @@ void VID::TSP::solve()
     // Setting first solution heuristic.
     RoutingSearchParameters searchParams = DefaultRoutingSearchParameters();
     searchParams.set_first_solution_strategy(FirstSolutionStrategy::PATH_CHEAPEST_ARC);
+    searchParams.set_local_search_metaheuristic(
+    LocalSearchMetaheuristic::GUIDED_LOCAL_SEARCH);
+    searchParams.mutable_time_limit()->set_seconds(1);
+    searchParams.set_log_search(false);
 
     // Solve the TSP problem
     const Assignment* mSolution = (*routing).SolveWithParameters(searchParams);

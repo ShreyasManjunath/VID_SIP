@@ -21,6 +21,7 @@
 #include "tf/tf.h"
 #include "planner_node/TSP.h"
 #include "planner_node/Planner.h"
+#include <geometry_msgs/PoseArray.h>
 
 #define degreesToRadians(angleDegrees) (angleDegrees * M_PI / 180.0)
 
@@ -36,7 +37,7 @@ reg_t problemBoundary;
 koptError_t koptError;
 std::vector<Vector3f> inputPoly;
 double minIncidenceAngle = degreesToRadians(10);
-double minDist = 6.0;
+double minDist = 3.0;
 double maxDist = 8.0;
 int g_convex_pieces = 12;
 double g_angular_discretization_step = 0.2;
@@ -45,7 +46,9 @@ double g_max_obs_dim = 0;
 double g_discretization_step;
 int polygon_seq_count = 0;
 int viewpoint_seq_count = 0;
- 
+std::vector<float> starting_position;
+std::vector<float> starting_rotation;
+
 double g_cost;
 std::vector<double> spaceSize = {200.0, 200.0, 50.0};
 std::vector<double> spaceCenter = {0.0, 0.0, 0.0};
@@ -54,17 +57,43 @@ std::vector<geometry_msgs::Polygon> inspectionArea;
 void visualize(StateVector st);
 void drawPolygon(poly_t* tmp);
 void drawTrajectory(std::vector<StateVector>& tour);
+void readAndInsertPolygon(std::vector<poly_t *>& polygons);
+void publishRejectedTriangles(Vector3f& v1, Vector3f& v2, Vector3f& v3);
+int rejected_triangle_count = 0;
+ros::Publisher rejected_triangle_pub;
 ros::Publisher mesh_pub;
 ros::Publisher viewpoint_pub;
 ros::Publisher trajectory_pub;
+ros::Publisher computed_trajectory_posearray_pub;
+// Pose Array to store the computed trajectory poses.
+geometry_msgs::PoseArray  computed_trajectory_posearray;
 
 bool plan(planner_node::inspection::Request& req, planner_node::inspection::Response& res)
 {
     koptError = SUCCESSFUL;
+    // Get all necessary params from ROSPARAM server
+    ros::param::get("/VID_SIP_Planner_Node/planner/dmin", minDist);
+    ros::param::get("/VID_SIP_Planner_Node/planner/dmax", maxDist);
+    ros::param::get("/VID_SIP_Planner_Node/planner/minIncidenceAngle", minIncidenceAngle);
+    ros::param::get("/VID_SIP_Planner_Node/camera/horizontal_fov", g_camAngleHorizontal);
+    ros::param::get("/VID_SIP_Planner_Node/camera/vertical_fov", g_camAngleVertical);
+    ros::param::get("/VID_SIP_Planner_Node/camera/pitch", g_camPitch);
+    ros::param::get("/VID_SIP_Planner_Node/starting_pose/position_xyz", starting_position);
+    ros::param::get("/VID_SIP_Planner_Node/starting_pose/rotation_rpy", starting_rotation);
+
+    bool DEBUG_MODE = false;
+    ros::param::get("/VID_SIP_Planner_Node/debug_mode", DEBUG_MODE);
+
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
 
+    // Printing cam frustum
+    for(auto& normal : VID::Polygon::camBoundNormal)
+    {
+        std::cout << normal.transpose() << std::endl;
+    }
+    AGPSolver::setCameraMtx("/VID_SIP_Planner_Node");
     // Starting Point and other required poses
     for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();
         itFixPose != req.requiredPoses.end() && (itFixPose != req.requiredPoses.end()-1 || req.requiredPoses.size() == 1);
@@ -80,34 +109,54 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         tmp->Fixpoint = true;
         polygons.push_back(tmp);
     }
-
-    // Read the inspection area (or Mesh data)
-    for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
+    
+    if(!DEBUG_MODE)
     {
-        poly_t *tmp = new poly_t;
-        for(auto& vert : (*it).points)
+        // Read the inspection area (or Mesh data)
+        for(std::vector<geometry_msgs::Polygon>::iterator it = req.inspectionArea.begin(); it != req.inspectionArea.end(); it++)
         {
-            tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+            poly_t *tmp = new poly_t;
+            for(auto& vert : (*it).points)
+            {
+                tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+            }
+            tmp->Fixpoint = false;
+            AGPSolver::initPolygon(tmp);
+            polygons.push_back(tmp);
+            // drawPolygon(tmp);
+            // ros::Duration(0.01).sleep();
         }
-        tmp->Fixpoint = false;
-        AGPSolver::initPolygon(tmp);
-        polygons.push_back(tmp);
-        drawPolygon(tmp);
-        ros::Duration(0.01).sleep();
+
+        maxID = polygons.size();
+        g_discretization_step = 5.0e-3*sqrt(SQ(req.spaceSize[0])+SQ(req.spaceSize[1]));
+        g_cost = DBL_MAX;
+        ROS_INFO("Request received");
+
+        problemBoundary.setNumDimensions(3);
+        assert(req.spaceCenter.size() == 3 && req.spaceSize.size());
+        for(int i=0; i<3;i++)
+        {
+            problemBoundary.size[i] = req.spaceSize[i];
+            problemBoundary.center[i] = req.spaceCenter[i];
+        } 
+    }
+    else
+    {
+        readAndInsertPolygon(polygons);
+        maxID = polygons.size();
+        g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
+        g_cost = DBL_MAX;
+        ROS_INFO("Request received");
+
+        problemBoundary.setNumDimensions(3);
+        assert(spaceCenter.size() == 3 && spaceSize.size());
+        for(int i=0; i<3;i++)
+        {
+            problemBoundary.size[i] = spaceSize[i];
+            problemBoundary.center[i] = spaceCenter[i];
+        } 
     }
 
-    maxID = polygons.size();
-    g_discretization_step = 5.0e-3*sqrt(SQ(spaceSize[0])+SQ(spaceSize[1]));
-    g_cost = DBL_MAX;
-    ROS_INFO("Request received");
-
-    problemBoundary.setNumDimensions(3);
-    assert(spaceCenter.size() == 3 && spaceSize.size());
-    for(int i=0; i<3;i++)
-    {
-        problemBoundary.size[i] = spaceSize[i];
-        problemBoundary.center[i] = spaceCenter[i];
-    } 
 
     if(VP)
     {
@@ -120,13 +169,17 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     plannerLog.open((pkgPath+"/data/report.log").c_str(), std::ios::out);
     plannerLog.close();
 
+    ros::Time begin_time = ros::Time::now();
+
     for(int i = 0; i < maxID; i++)
     {
         StateVector* s1 = NULL;
         StateVector* s2 = NULL;
         /* sample viewpoint */
         StateVector VPtmp;
-        AGPSolver agp(polygons[i], 3, 8);
+        int numOfVertices = polygons[i]->getnumOfVertices();
+        int numOfConstraints = numOfVertices + 1 + 4;
+        AGPSolver agp(polygons[i], 3, numOfConstraints);
         VPtmp = agp.dualBarrierSamplerFresh(s1, s2, &VP[i]);
         VP[i] = VPtmp; VPList.push_back(VPtmp);
         // visualize(VPtmp);
@@ -156,10 +209,43 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
         viewpoint_pub.publish(point);
     }
 
+    std::fstream tourFile;
+    tourFile.open((pkgPath+"/data/tour.csv").c_str(), std::ios::out);
+
     std::unique_ptr<VID::TSP> tsp_object = std::unique_ptr<VID::TSP>(new VID::TSP{VPList, 0, 1});
     tsp_object->solve();
     auto final_route = tsp_object->getFinalRoute();
     drawTrajectory(final_route);
+    ros::Time end_time = ros::Time::now();
+    auto total_duration = (end_time - begin_time).toSec();
+    ROS_INFO("Total Planning duration in seconds (s): %.2f", total_duration);
+    for(auto& vp : final_route)
+    {
+        geometry_msgs::Pose pose;
+        pose.position.x = vp[0];
+        pose.position.y = vp[1];
+        pose.position.z = vp[2];
+
+        tf::Quaternion q = tf::createQuaternionFromRPY(0.0, 0.0, vp[3]);
+        pose.orientation.x = q.x();
+        pose.orientation.y = q.y();
+        pose.orientation.z = q.z();
+        pose.orientation.w = q.w();
+
+        computed_trajectory_posearray.poses.push_back(pose);
+        //  Write to file
+        tourFile << vp[0] << "," << vp[1] << "," << vp[2] << ",0,0," << vp[3] << "\n";
+    }
+    tourFile.close();
+
+    ROS_INFO("Num of Rejected triangles: %d", AGPSolver::total_rejected_triangle_count);
+    // Publish the poses for 10 seconds atleast
+    for(int j= 0; j < 100 && !ros::isShuttingDown(); ++j){
+        computed_trajectory_posearray.header.frame_id = "/kopt_frame";
+        computed_trajectory_posearray.header.stamp = ros::Time::now();
+        computed_trajectory_posearray_pub.publish(computed_trajectory_posearray);
+        ros::Duration(0.25).sleep();
+    }
 
     if(koptError != SUCCESSFUL)
     {
@@ -178,23 +264,25 @@ int main(int argc, char **argv) {
     mesh_pub = n.advertise<nav_msgs::Path>("stl_mesh", 1);
     viewpoint_pub = n.advertise<visualization_msgs::Marker>("viewpoint_marker", 1);
     trajectory_pub = n.advertise<nav_msgs::Path>("visualization_marker", 1);
+    computed_trajectory_posearray_pub = n.advertise<geometry_msgs::PoseArray>("/computed_trajectory_posearray", 1);
+    rejected_triangle_pub = n.advertise<nav_msgs::Path>("rejected_triangles", 1);
     ros::Duration(3).sleep();
-    // geometry_msgs::Polygon P;
-    // geometry_msgs::Point32 p32;
-    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
+    geometry_msgs::Polygon P;
+    geometry_msgs::Point32 p32;
+    p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
     // P.points.clear();
     // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
     // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
     // inspectionArea.push_back(P);
-    // P.points.clear();
-    // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
-    // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
-    // inspectionArea.push_back(P);
+    P.points.clear();
+    p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 3; P.points.push_back(p32);
+    p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
+    inspectionArea.push_back(P);
     // P.points.clear();
     // p32.x = 2; p32.y = 11; p32.z = 3; P.points.push_back(p32);
     // p32.x = 2; p32.y = 14; p32.z = 1.5; P.points.push_back(p32);
@@ -216,6 +304,85 @@ int main(int argc, char **argv) {
     // p32.x = 2; p32.y = 2; p32.z = 3; P.points.push_back(p32);
     // inspectionArea.push_back(P);
 
+    // // geometry_msgs::Polygon P;
+    // // geometry_msgs::Point32 p32;
+    // P.points.clear();
+    // p32.x = 24.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 24.5; p32.y = 9; p32.z = 2; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 1.86627; p32.y =  4.45662; p32.z =  3.44553; P.points.push_back(p32);
+    // p32.x = 2.8217; p32.y =  3.11861; p32.z =  2.63698; P.points.push_back(p32);
+    // p32.x = 4.83986; p32.y =  3.30847; p32.z =  2.68395; P.points.push_back(p32);
+    // p32.x = 5.40992; p32.y =  5.48551; p32.z = 3.93268; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // Polygon testing
+    // geometry_msgs::Polygon P;
+    // geometry_msgs::Point32 p32;
+    // p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.500000; P.points.push_back(p32);
+    // p32.x = 3.257517; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
+    // p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.750000; P.points.push_back(p32);
+    // p32.x = 2.945017; p32.y = 2.000000; p32.z = 2.250000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+    
+    // P.points.clear();
+    // p32.x =4.187500; p32.y = 3.271069; p32.z = 1.000000; P.points.push_back(p32);
+    // p32.x =4.812500; p32.y = 3.271069; p32.z = 0.500000; P.points.push_back(p32);
+    // p32.x =3.875000; p32.y = 3.271069; p32.z = 0.500000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 5.884196; p32.y = 2.000000; p32.z = 1.311341; P.points.push_back(p32);
+    // p32.x = 5.884196; p32.y = 2.000000; p32.z = 1.811341; P.points.push_back(p32);
+    // p32.x = 5.259196; p32.y = 2.000000; p32.z = 1.811341; P.points.push_back(p32);
+    // p32.x = 5.259196; p32.y = 2.000000; p32.z = 1.311341; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 4.555093; p32.y = 2.000000; p32.z = 0.750000; P.points.push_back(p32);
+    // p32.x = 4.242593; p32.y = 2.000000; p32.z = 1.250000; P.points.push_back(p32);
+    // p32.x = 3.617593; p32.y = 2.000000; p32.z = 0.750000; P.points.push_back(p32);
+    // p32.x = 3.617593; p32.y = 2.000000; p32.z = 0.250000; P.points.push_back(p32);
+    // p32.x = 3.930093; p32.y = 2.000000; p32.z = 0.000000; P.points.push_back(p32);
+    // p32.x = 4.555093; p32.y = 2.000000; p32.z = 0.500000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 6.687500; p32.y = 2.000000; p32.z = 2.000000; P.points.push_back(p32);
+    // p32.x = 6.687526; p32.y = 2.000000; p32.z = 1.687500; P.points.push_back(p32);
+    // p32.x = 6.687526; p32.y = 2.500000; p32.z = 1.687500; P.points.push_back(p32);
+    // p32.x = 6.687449; p32.y = 2.500000; p32.z = 2.625000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 4.500000; p32.y = 2.250000; p32.z = 2.000000; P.points.push_back(p32);
+    // p32.x = 4.656250; p32.y = 2.125000; p32.z = 2.000000; P.points.push_back(p32);
+    // p32.x = 5.125000; p32.y = 2.250000; p32.z = 2.000000; P.points.push_back(p32);
+    // p32.x = 4.812500; p32.y = 2.500000; p32.z = 2.000000; P.points.push_back(p32);
+    // p32.x = 4.500000; p32.y = 2.500000; p32.z = 2.000000; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 15.5; p32.y = 8; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 15.5; p32.y = 5; p32.z = 3; P.points.push_back(p32);
+    // p32.x = 15.5; p32.y = 4; p32.z = 2; P.points.push_back(p32); // --
+    // p32.x = 15.5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 15.5; p32.y = 8; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 15.5; p32.y = 9; p32.z = 2; P.points.push_back(p32); // --
+    // inspectionArea.push_back(P);
+
+    // P.points.clear();
+    // p32.x = 6; p32.y = 5; p32.z = 1; P.points.push_back(p32);
+    // p32.x = 5; p32.y = 5; p32.z = 1.5; P.points.push_back(p32);
+    // p32.x = 6; p32.y = 5; p32.z = 2; P.points.push_back(p32);
+    // p32.x = 8; p32.y = 5; p32.z = 2; P.points.push_back(p32);
+    // p32.x = 8; p32.y = 5; p32.z = 1; P.points.push_back(p32);
+    // inspectionArea.push_back(P);
     // plan();
     ros::ServiceServer service = n.advertiseService("inspectionPath", plan);
     ROS_INFO("Service started");
@@ -311,4 +478,61 @@ void drawTrajectory(std::vector<StateVector>& tour)
     }
     ros::Duration(0.1).sleep();
     trajectory_pub.publish(trajectory);
+}
+
+void readAndInsertPolygon(std::vector<poly_t *>& polygons)
+{
+    for(std::vector<geometry_msgs::Polygon>::iterator it = inspectionArea.begin(); it != inspectionArea.end(); it++)
+    {
+        poly_t *tmp = new poly_t;
+        for(auto& vert : (*it).points)
+        {
+            tmp->vertices.push_back(Vector3f(vert.x, vert.y, vert.z));
+        }
+        tmp->Fixpoint = false;
+        AGPSolver::initPolygon(tmp);
+        polygons.push_back(tmp);
+        drawPolygon(tmp);
+        ros::Duration(0.01).sleep();
+    }
+}
+
+void publishRejectedTriangles(Vector3f& v1, Vector3f& v2, Vector3f& v3){
+  nav_msgs::Path p;
+  p.header.frame_id = "/kopt_frame";
+  p.header.stamp = ros::Time::now();
+  p.header.seq = rejected_triangle_count++;
+  geometry_msgs::PoseStamped vert1, vert2, vert3;
+  vert1.pose.position.x = v1[0];
+  vert1.pose.position.y = v1[1];
+  vert1.pose.position.z = v1[2];
+  vert1.pose.orientation.x =  0.0;
+  vert1.pose.orientation.y =  0.0;
+  vert1.pose.orientation.z =  0.0;
+  vert1.pose.orientation.w =  1.0;
+
+  vert2.pose.position.x = v2[0];
+  vert2.pose.position.y = v2[1];
+  vert2.pose.position.z = v2[2];
+  vert2.pose.orientation.x =  0.0;
+  vert2.pose.orientation.y =  0.0;
+  vert2.pose.orientation.z =  0.0;
+  vert2.pose.orientation.w =  1.0;
+
+  vert3.pose.position.x = v3[0];
+  vert3.pose.position.y = v3[1];
+  vert3.pose.position.z = v3[2];
+  vert3.pose.orientation.x =  0.0;
+  vert3.pose.orientation.y =  0.0;
+  vert3.pose.orientation.z =  0.0;
+  vert3.pose.orientation.w =  1.0;
+
+  p.poses.push_back(vert1);
+  p.poses.push_back(vert2);
+  p.poses.push_back(vert3);
+  p.poses.push_back(vert1);
+
+  rejected_triangle_pub.publish(p);
+  ros::Duration(0.1).sleep();
+
 }

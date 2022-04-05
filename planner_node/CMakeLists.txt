@@ -134,6 +134,7 @@ add_library(
   src/State.cpp
   src/TSP.cpp
   src/Planner.cpp
+  src/PreProcess.cpp
   )
 
 target_link_libraries(${PROJECT_NAME}
@@ -143,6 +144,11 @@ target_link_libraries(${PROJECT_NAME}
 
 add_executable(plan
  src/plan.cpp
+)
+
+add_executable(test_preprocess
+src/test.cpp
+src/PreProcess.cpp
 )
 
 ## Rename C++ executable without prefix
@@ -161,5 +167,9 @@ target_link_libraries(plan
    ${optec_LIBRARIES}
    ${PROJECT_NAME}
    ortools::ortools
+)
+
+target_link_libraries(test_preprocess
+   ${catkin_LIBRARIES}
 )
 
