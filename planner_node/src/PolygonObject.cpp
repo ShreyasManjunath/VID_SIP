@@ -59,6 +59,11 @@ void VID::Polygon::setCamBoundNormals()
     Vector3f y2(0, 1, 0);
     Vector3f right = m2*y2;
     camBoundNormal.push_back(right);
+
+    std::cout << "axis: " << axis.transpose() << std::endl;
+    std::cout << "m1: " << m1.matrix() << std::endl;
+    std::cout << "m2: " << m2.matrix() << std::endl;
+    std::cout << "-------------------------" << std::endl;
 }
 
 void VID::Polygon::setnumOfVertices(int n)

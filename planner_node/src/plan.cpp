@@ -87,6 +87,12 @@ bool plan(planner_node::inspection::Request& req, planner_node::inspection::Resp
     std::vector<poly_t *> polygons;
     poly_t::setParam(minIncidenceAngle, minDist, maxDist);
     VID::Polygon::setCamBoundNormals();
+
+    // Printing cam frustum
+    for(auto& normal : VID::Polygon::camBoundNormal)
+    {
+        std::cout << normal.transpose() << std::endl;
+    }
     AGPSolver::setCameraMtx("/VID_SIP_Planner_Node");
     // Starting Point and other required poses
     for(std::vector<geometry_msgs::Pose>::iterator itFixPose = req.requiredPoses.begin();

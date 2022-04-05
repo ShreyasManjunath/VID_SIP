@@ -147,18 +147,18 @@ void AGPSolver::setDminDmaxConstraint(bool flag)
     poly.A[i] = poly.aabs[0]; poly.A[i+1] = poly.aabs[1]; poly.A[i+2] = poly.aabs[2];
 
     int j = currentIndexOfBoundMatrices;
-    double pixel_size, focal_length, hor_gsd;
-    std::string param_name = "/VID_SIP_Planner_Node/camera";
-    ros::param::get(param_name + "/pixel_size", pixel_size);
-    ros::param::get(param_name + "/focal_length", focal_length);
-    ros::param::get(param_name + "/hor_gsd", hor_gsd);
-    poly.maxDist = (hor_gsd) * (focal_length) /(pixel_size * 1000);
+    // double pixel_size, focal_length, hor_gsd;
+    // std::string param_name = "/VID_SIP_Planner_Node/camera";
+    // ros::param::get(param_name + "/pixel_size", pixel_size);
+    // ros::param::get(param_name + "/focal_length", focal_length);
+    // ros::param::get(param_name + "/hor_gsd", hor_gsd);
+    // poly.maxDist = (hor_gsd) * (focal_length) /(pixel_size * 1000);
     // lba and uba
     poly.lbA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.minDist); 
     poly.ubA[j] = poly.aabs.dot(poly.centroid+ poly.aabs * poly.maxDist);
     currentIndexOfAMatrix = currentIndexOfAMatrix + 3;
     currentIndexOfBoundMatrices = currentIndexOfBoundMatrices + 1;
-    ROS_INFO("Dmax based on GSD: %f", poly.maxDist);
+    // ROS_INFO("Dmax based on GSD: %f", poly.maxDist);
 }
 
 void AGPSolver::setPositionConstraints(bool flag)
@@ -206,6 +206,9 @@ void AGPSolver::setFOVConstraints(int pw, bool flag)
     int numOfVertices = poly.getnumOfVertices();
 
     double psiD = pw*psiInc;
+    int n;
+    ros::param::get("/VID_SIP_Planner_Node/n", n);
+    // double psiD = n*M_PI/6.0;
     Vector3f right(-sin(psiD-psiInc/2.0), cos(psiD-psiInc/2.0),0.0);
     Vector3f left(-sin(psiD+psiInc/2.0), cos(psiD+psiInc/2.0),0.0);
     Vector3f lowerCam(sin(angleLower)*cos(psiD), sin(angleLower)*sin(psiD), -cos(angleLower));
@@ -423,11 +426,12 @@ std::tuple<StateVector, int> AGPSolver::findViewPointSolution(StateVector* state
 
         // ROS_INFO("ObjectVal, xxCompensate: {%f, %f}", this->QPSolver->getObjVal(), xxCompensate);
 
-        if(this->QPSolver->getObjVal() + xxCompensate + costOrientation < cost && solFoundLocal)
+        if(this->QPSolver->getObjVal() + xxCompensate + costOrientation< cost && solFoundLocal)
         {
             best = g;
             cost = this->QPSolver->getObjVal() + xxCompensate + costOrientation;
         }
+        ROS_INFO("xxCompensate: {%f}", xxCompensate);
         solutionFound |= solFoundLocal;
 
 
